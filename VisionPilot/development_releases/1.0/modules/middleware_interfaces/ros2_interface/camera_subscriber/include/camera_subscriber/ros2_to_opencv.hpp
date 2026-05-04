@@ -69,6 +69,16 @@ namespace camera_subscriber {
 
         private:
 
+            /**
+            * @brief Internal callback function invoked when a new ROS2 image message arrives
+            * 
+            * Handles thread-safe conversion from sensor_msgs::msg::Image to cv::Mat
+            * and queuing of frames for retrieval by the application.
+            */
+            void image_callback(
+                const sensor_msgs::msg::Image::SharedPtr msg
+            );
+
     };
 
 };
