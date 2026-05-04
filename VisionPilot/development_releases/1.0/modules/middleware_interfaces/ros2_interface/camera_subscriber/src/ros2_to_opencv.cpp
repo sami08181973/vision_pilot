@@ -211,4 +211,22 @@ namespace camera_subscriber {
 
     };
 
+
+    // Statistics handlings
+    
+    ROS2ImageSubscriber::SubscriptionStats ROS2ImageSubscriber::get_stats() const {
+        std::lock_guard<std::mutex> lock(stats_mutex_);
+        return stats_;
+    }
+
+    void ROS2ImageSubscriber::reset_stats() {
+
+        std::lock_guard<std::mutex> lock(stats_mutex_);
+        stats_.frames_received = 0;
+        stats_.frames_dropped = 0;
+        stats_.conversion_errors = 0;
+        RCLCPP_INFO(get_logger(), "Statistics reset");
+
+    };
+
 }; // namespace camera_subscriber
