@@ -8,6 +8,8 @@ This camera subscriber module is a ROS2-based middleware component that does the
 2. Transforming received image messages into OpenCV format `cv::Mat` objects for processing.
 3. Maintaining a thread-safe queue with time-critical buffer ti ensure low-latency processing.
 
+This module is intended for ROS2-OpenCV image bridge used during closed-loop testing.
+
 Other features:
 
 - Stream status tracking which confirms whether the ROS2 image message stream has been started.
@@ -77,8 +79,8 @@ camera_subscriber/
 
 ```bash
 
-# 1. To release root
-d ~/Documents/Autoware/autoware_vision_pilot/VisionPilot/development_releases/1.0
+# 1. From root to release directory
+cd VisionPilot/development_releases/1.0
 
 # 2. Create build dir
 mkdir -p build && cd build
@@ -112,4 +114,43 @@ You can do a simple test using a local video by simply just:
 
 1. Publishing it as ROS2 image messages via [`ros-<distro>-image-publisher](https://docs.ros.org/en/humble/p/image_publisher/).
 
-2. Then, use the provided `VisionPilot/development_releases/auxiliaries/camera_subscriber/video_publisher` to visualize the `cv::Mat` received from the bridge.
+```bash
+
+# 1. Install package, assuming you are using ROS2 Humble
+sudo apt update
+sudo apt install ros-humble-image-publisher
+
+# 2. Establish ROS2 topic (assuming the topic is `/camera/image`)
+ros2 run image_publisher image_publisher_node --ros-args \
+-p filename:="<video absolute path>" \
+-p publish_rate:=30.0 \
+-p frame_id:="camera_link" \
+-r image_raw:=/camera/image
+
+```
+
+With this the topic `/camera/image` is now active and publishing frames from that local video, as ROS2 messages. You should 
+
+2. Then, use the provided `camera_viewer_node` executable to visualize the `cv::Mat` received from the bridge.
+
+```bash
+
+# 1. From root to auxiliaries directory
+cd VisionPilot/development_releases/auxiliaries
+
+# 2. Create build dir
+mkdir -p build && cd build
+
+# 3. Source ROS2 just in case you forgot to
+source /opt/ros/humble/setup.bash
+
+# 4. CMake configure
+cmake ..
+
+# 5. Compile
+make -j$(nproc)
+
+# 6. Execute
+./camera_viewer_node /camera/image 1
+
+```
