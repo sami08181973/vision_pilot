@@ -57,11 +57,11 @@ Run the viewer after publishing images:
 
 ```bash
 
-./camera_viewer_node /camera/image_raw 1
+./camera_viewer_node /camera/image_raw
 
 ```
 
-The first argument is the ROS2 image topic. The second argument is the frame queue size, which defaults to `1` for low-latency behavior.
+with the first argument being the ROS2 image topic. 
 
 ## IV. Notes
 

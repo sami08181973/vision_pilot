@@ -39,14 +39,8 @@ int main(int argc, char **argv)
         topic = argv[1];
     }
 
-    size_t queue_size = 1;
-    if (argc > 2) {
-        queue_size = static_cast<size_t>(std::stoul(argv[2]));
-    }
-
     auto node = std::make_shared<camera_subscriber::ROS2ImageSubscriber>(
         topic,
-        queue_size,
         "camera_viewer_node"
     );
 
@@ -62,7 +56,6 @@ int main(int argc, char **argv)
 
     RCLCPP_INFO(node->get_logger(), "camera_viewer_node started");
     RCLCPP_INFO(node->get_logger(), "  topic: %s", topic.c_str());
-    RCLCPP_INFO(node->get_logger(), "  queue size: %zu", queue_size);
 
     rclcpp::Rate loop_rate(30);
 
