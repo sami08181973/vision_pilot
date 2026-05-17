@@ -19,6 +19,8 @@ find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
 
 # Modules
+add_subdirectory(modules/engine)
+
 add_subdirectory(modules/control)
 
 add_subdirectory(modules/logging)
