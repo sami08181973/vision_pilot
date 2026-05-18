@@ -35,7 +35,7 @@ namespace visualization {
 
         // Helper func to escape JSON strings for signaling messages
         std::string escape_json(
-            const std::string & value
+            const std::string& value
         ) {
             gchar * escaped = g_strescape(value.c_str(), nullptr);
             std::string result = escaped != nullptr ? escaped : "";
@@ -47,7 +47,7 @@ namespace visualization {
 
         // Helper func to generate JSON signaling message for SDP offer
         std::string make_offer_message(
-            const std::string & sdp_offer
+            const std::string& sdp_offer
         ) {
 
             return  std::string{
@@ -61,7 +61,7 @@ namespace visualization {
         // Helper func to generate JSON signaling message for ICE candidate
         std::string make_candidate_message(
             int sdp_mline_index,
-            const std::string & candidate
+            const std::string& candidate
         ) {
 
             return  std::string{
@@ -77,7 +77,7 @@ namespace visualization {
 
         // Helper func to ensure all received frames are in BGR format for WebRTC streaming
         cv::Mat ensure_bgr_frame(
-            const cv::Mat & frame
+            const cv::Mat& frame
         ) {
 
             // Return empty frame as is
@@ -114,8 +114,32 @@ namespace visualization {
                 };
             };
 
+            return converted;
+
         };
 
+
+    };  // namespace
+
+
+    struct WebRTCStreamer::Impl {
+
+        // Implementation details for WebRTC streaming (e.g., GStreamer pipeline, signaling, etc.)
+        // This struct shall contain members and methods to manage WebRTC connections, encode frames, handle signaling, etc.
+
+        explicit Impl(Config config_in) : config(std::move(config_in)) {};
+
+        bool start();
+        bool stop();
+        bool push_frame(const cv::Mat& frame);
+        bool has_clients() const;
+        void queue_signal(const std::string& signal);
+        void flush_pending_signals();
+        void queue_remote_candidate(
+            int sdp_mline_index,
+            const std::string& candidate
+        );
+        void flush_pending_remote_candidates();
 
     };
 
