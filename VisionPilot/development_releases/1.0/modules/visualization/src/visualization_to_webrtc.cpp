@@ -50,9 +50,10 @@ namespace visualization {
                         </style>
                     </head>
                     <body>
-                        <video id="video" autoplay playsinline></video>
+                        <video id="video" autoplay playsinline muted></video>
                         <script>
                             const video=document.getElementById('video');
+                            const pendingCandidates=[];
                             const pc=new RTCPeerConnection();
                             pc.ontrack=e=>{video.srcObject=e.streams[0]};
                             pc.onicecandidate=e=>{
@@ -66,6 +67,15 @@ namespace visualization {
                             };
                             const scheme=location.protocol==='https:'?'wss://':'ws://';
                             const ws=new WebSocket(scheme+location.host+'/'+'ws');
+                            async function drainPendingCandidates(){
+                                if(!pc.remoteDescription){
+                                    return;
+                                }
+                                while(pendingCandidates.length>0){
+                                    const c=pendingCandidates.shift();
+                                    await pc.addIceCandidate(c);
+                                }
+                            }
                             ws.onmessage=async ev=>{
                                 const p=JSON.parse(ev.data);
                                 if(p.type==='offer'){
@@ -73,6 +83,7 @@ namespace visualization {
                                         type:'offer',
                                         sdp:p.sdp
                                     });
+                                    await drainPendingCandidates();
                                     const a=await pc.createAnswer();
                                     await pc.setLocalDescription(a);
                                     ws.send(JSON.stringify({
@@ -80,11 +91,16 @@ namespace visualization {
                                         sdp:pc.localDescription.sdp
                                     }));
                                 } else if(p.type==='candidate') {
+                                    const candidate={
+                                        candidate:p.candidate,
+                                        sdpMLineIndex:p.sdpMLineIndex
+                                    };
+                                    if(!pc.remoteDescription){
+                                        pendingCandidates.push(candidate);
+                                        return;
+                                    }
                                     try {
-                                        await pc.addIceCandidate({
-                                            candidate:p.candidate,
-                                            sdpMLineIndex:p.sdpMLineIndex
-                                        });
+                                        await pc.addIceCandidate(candidate);
                                     } catch(e) {
                                         console.error('Error adding ICE candidate:', e);
                                     }
