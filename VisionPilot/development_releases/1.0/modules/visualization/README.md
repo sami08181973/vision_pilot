@@ -6,6 +6,7 @@ I would like to thank [Ethan](https://dev.to/ethand91) and his blog post of [Str
 
 Your implementation was truly helpful and inspiring for me to complete this module.
 
+
 ## I. Overview
 
 The WebRTC Visualization Module provides a real-time video streaming capability for the VisionPilot pipeline via WebRTC protocol. It serves the following core functions:
@@ -17,6 +18,7 @@ The WebRTC Visualization Module provides a real-time video streaming capability 
 5. **Thread-safe frame streaming** that manages concurrent frame pushes from the main application thread while running a GStreamer pipeline and event loop in separate threads.
 
 This module is essential for downstream remote monitoring, debugging, and visualization of autonomous driving pipelines during development and testing phases.
+
 
 ## II. Architecture && Module structure
 
@@ -142,6 +144,7 @@ visualization/
 
 ```
 
+
 ## III. Build
 
 ### 1. Prerequisites
@@ -201,3 +204,101 @@ make -j$(nproc)
 ```
 
 Binary location: `build/VisionPilot`
+
+
+## IV. Test/demo
+
+### 1. Running with WebRTC enabled
+
+This demo shall guide you through testing this WebRTC streaming with a V4L2 mount, streamed 
+via a combination of the `v4l2loopback` kernel module and FFmpeg.
+
+With this demo, you will:
+1. Publish a V4L2 video streaming mount from a local video.
+2. Use `VisionPilot` application to subscribe to that streaming mount, process and stream frames to a local host.
+
+```bash
+
+# 1. Navigate to build directory
+cd /path/to/VisionPilot/development_releases/1.0/build
+
+
+# 2. Initiate V4L2 streaming mount
+
+# a. Install package
+sudo apt update
+sudo apt install ffmpeg -y
+sudo apt install v4l2loopback-dkms -y
+
+# b. Load the module (assuming you gonna stream it at `/dev/video9`)
+sudo modprobe -r v4l2loopback
+sudo modprobe v4l2loopback video_nr=9 card_label="Virtual Camera" exclusive_caps=1
+
+# c. Publish looping video at that mount
+ffmpeg -re -stream_loop -1 -i <absolute path to local video> -f v4l2 -pix_fmt yuv420p /dev/video9
+
+
+# 3. Kickstart VisionPilot app with V4L2 subscription to that mount, and stream frames to http://127.0.0.1:8080/
+./VisionPilot 1 /dev/video0 10 1 8080
+```
+
+**Arguments:**
+
+- `1`: V4L2 mode (use `0` for ROS2 mode)
+- `/dev/video0`: V4L2 device path (if ROS2 mode, this second arg will be ROS2 topic name)
+- `10`: target FPS
+- `1`: enable WebRTC (use `0` to disable)
+- `8080`: WebRTC server port (not available if WebRTC is disabled)
+
+**Expected terminal output:**
+
+```bash
+
+Starting in V4L2 mode with device: /dev/video9 and FPS: 10
+[V4L2Reader INFO] Initializing V4L2 Reader
+[V4L2Reader INFO]   Device Path: /dev/video9
+[V4L2Reader INFO]   Target FPS: 10
+[V4L2Reader INFO] V4L2 device configured successfully
+[V4L2Reader INFO]   Received resolution: 2560x1440
+[V4L2Reader INFO]   Received FPS: 10.000000
+Starting WebRTC streamer on port: 8080
+[WebRTCStreamer] soup_server created
+[WebRTCStreamer] soup_server listening on port 8080 and handlers installed
+[WebRTCStreamer] pipeline created, appsrc=0x57add3f02e20 webrtc=0x57add3f34110
+[WebRTCStreamer] pipeline set to PLAYING
+Open browser at: http://127.0.0.1:8080/
+Local OpenCV preview is disabled while WebRTC is enabled.
+
+```
+
+### 2. Accessing the stream
+
+1. Open a web browser and navigate to: `http://127.0.0.1:8080/`
+2. The minimal HTML client page will load.
+3. WebRTC negotiation will begin automatically.
+4. Once offer/answer exchange completes, the video stream should appear in the `<video>` element.
+
+### 3. Troubleshooting
+
+These are known/enountered bugs and errors. If you encounter a completely new one, try posting it as new issue
+at [Autoware VisionPilot repository](https://github.com/autowarefoundation/autoware_vision_pilot).
+
+1. **Black/blank video**: frame may not be arriving from the camera. Test with WebRTC disabled:
+  
+    ```bash
+    
+    ./VisionPilot 1 /dev/video0 10 0
+    
+    ```
+    
+    If OpenCV preview works, the camera is fine, then the issue might be somewhat WebRTC-specific.
+  
+2. **Connection refused**: ensure port `8080` is not in use:
+  
+    ```bash
+    
+    lsof -i :8080
+    
+    ```
+
+
