@@ -1,102 +1,119 @@
 #pragma once
 
-#include <cstdint>
+#include <models/auto_drive.hpp>
+#include <models/auto_speed.hpp>
+#include <opencv2/core.hpp>
+
+#include <memory>
 #include <random>
-#include <stdexcept>
+#include <string>
 #include <vector>
+
+// ObjectFinder lives in fusion/tracking/ — forward-declared here to keep this
+// header free of OpenCV/tracking internals for downstream consumers.
+namespace visionpilot::tracking { class ObjectFinder; }
 
 namespace visionpilot::fusion {
 
-// ─── Input type ────────────────────────────────────────────────────────────────
-// Caller converts model outputs to this before each update() call.
-// Set valid=false for any source that should be skipped this frame.
-struct DistanceMeasurement {
-    float distance_m = 0.f;   // estimated distance in metres  [0, D_MAX]
-    float stddev_m   = 15.f;  // 1-sigma Gaussian noise characterisation
-    bool  valid      = false;
-};
-
-// ─── Output type ───────────────────────────────────────────────────────────────
-// velocity_ms sign convention (matches ObjectFinder):
-//   negative → object approaching (distance decreasing)
-//   positive → object receding   (distance increasing)
+// ─── Output ────────────────────────────────────────────────────────────────────
+// Self-contained — no tracking types exposed publicly.
 struct CIPOFusionEstimate {
     bool  valid              = false;
-    float distance_m         = 0.f;  // particle-weighted mean distance (m)
-    float velocity_ms        = 0.f;  // particle-weighted mean velocity (m/s)
-    float distance_stddev_m  = 0.f;  // spread of the distance distribution
-    float velocity_stddev_ms = 0.f;  // spread of the velocity distribution
+
+    // Particle-filter (fused) posterior
+    float distance_m         = 0.f;
+    float velocity_ms        = 0.f;    // negative = approaching
+    float distance_stddev_m  = 0.f;
+    float velocity_stddev_ms = 0.f;
+
+    // Kalman-tracker snapshot (for display / cut-in alerting)
+    bool  tracker_found      = false;
+    int   tracker_id         = -1;
+    float tracker_dist_m     = 0.f;
+    float tracker_vel_ms     = 0.f;
+    bool  cut_in_detected    = false;
 };
 
-// ─── Particle filter ───────────────────────────────────────────────────────────
+// ─── LongitudinalFusion ────────────────────────────────────────────────────────
 //
-// Fuses two independent distance sources for the CIPO (Closest In-Path Object):
+// Single entry point for CIPO longitudinal estimation.  Internally handles:
+//   1. ObjectFinder Kalman tracker (if homography_path configured)
+//         AutoSpeed detections + homography → tracked CIPO distance
+//   2. Particle filter fusing AutoDrive + tracker into final distance/velocity
 //
-//   Source A — AutoDrive model:
-//     dist_normalized ∈ [0,1]  →  distance_m = D_MAX * (1 – dist_normalized)
-//     Always applied (noisier, wide field of view, frame-to-frame stable).
+// Usage:
+//   LongitudinalFusion::Config cfg;
+//   cfg.homography_path = "/path/to/homography_zod.yaml";
+//   LongitudinalFusion fusion(cfg);
 //
-//   Source B — Kalman tracker (ObjectFinder, ported in future iterations):
-//     Precise per-track distance estimate; passed as optional DistanceMeasurement.
-//     Tighter noise budget; significantly anchors the distribution when present.
-//
-// State vector per particle:  [distance_m, velocity_ms]
-// Process model:              constant velocity + independent Gaussian noise
-// Measurement model:          Gaussian likelihood; log-space for stability
-// Resampling:                 systematic low-variance when Neff < N/2
+//   // Per frame (after inference barrier):
+//   CIPOFusionEstimate est = fusion.update(drive_out, speed_out, original_frame);
 //
 class LongitudinalFusion {
 public:
     struct Config {
         int   n_particles          = 500;
-        float d_max_m              = 150.f;  // AutoDrive maximum range
-        float dt_s                 = 0.10f;  // nominal timestep (s); overridden per update() call
-        float process_noise_dist_m = 0.50f;  // 1-sigma position scatter per step (m)
-        float process_noise_vel_ms = 0.20f;  // 1-sigma velocity scatter per step (m/s)
-        float autodrive_noise_m    = 15.f;   // 1-sigma AutoDrive measurement noise (m)
-        float tracker_noise_m      = 3.f;    // 1-sigma tracker measurement noise (m)
+        float d_max_m              = 150.f;
+        float dt_s                 = 0.10f;   // nominal dt; overridden per-call
+        float process_noise_dist_m = 0.50f;
+        float process_noise_vel_ms = 0.20f;
+        float autodrive_noise_m    = 15.f;
+        float tracker_noise_m      = 3.f;
+        std::string homography_path = "";     // enable ObjectFinder when non-empty
+        // Per-frame log: AutoDrive_d | Tracker_d Tracker_v | Fused_d Fused_v ±std
+        bool debug = false;
     };
 
-    LongitudinalFusion();                    // default Config
-    explicit LongitudinalFusion(Config cfg); // custom Config
+    LongitudinalFusion();
+    explicit LongitudinalFusion(Config cfg);
+    ~LongitudinalFusion();  // defined in .cpp where ObjectFinder is complete
 
-    // ── Primary API ──────────────────────────────────────────────────────────
-    //
-    // Call once per frame, after ALL model inferences have completed (barrier).
-    //
-    //   autodrive_meas  : distance from AutoDrive (always pass; valid = model output valid)
-    //   tracker_meas    : distance from ObjectFinder/Kalman (valid = false until tracker ported)
-    //   dt_s            : actual elapsed seconds since last call; 0 → use cfg.dt_s
-    //
-    CIPOFusionEstimate update(const DistanceMeasurement& autodrive_meas,
-                               const DistanceMeasurement& tracker_meas = {},
-                               float dt_s = 0.f);
+    // Move-only (unique_ptr member).
+    // Definitions live in longitudinal_fusion.cpp where ObjectFinder is complete.
+    LongitudinalFusion(LongitudinalFusion&&) noexcept;
+    LongitudinalFusion& operator=(LongitudinalFusion&&) noexcept;
 
-    // Hard-reset the filter.  Call on cut-in events, scene changes, or video rewinds.
+    // Main per-frame call.
+    // autodrive         : output from AutoDrive model
+    // autospeed         : output from AutoSpeed model (bboxes already in 1024×512 space)
+    // preprocessed_frame: the center-cropped+resized 1024×512 frame fed to the models
+    //                     (same coordinate space as the homography calibration)
+    // dt_s              : elapsed seconds since last call; 0 → use cfg.dt_s
+    CIPOFusionEstimate update(
+        const models::AutoDriveOutput& autodrive,
+        const models::AutoSpeedOutput& autospeed,
+        const cv::Mat& preprocessed_frame,
+        float dt_s = 0.f);
+
     void reset();
-
     const Config& config() const { return cfg_; }
 
 private:
-    struct Particle {
-        float distance_m;
-        float velocity_ms;
-        float weight;
-    };
+    // log_w follows the MRPT convention: accumulated in log-space between resamples,
+    // reset to 0 after each systematic resample.  Never stored as linear to avoid
+    // exp() underflow (which caused the catastrophic collapse to 0 m).
+    struct Particle { float distance_m, velocity_ms, log_w; };
+
+    // Internal measurement bundle
+    struct Meas { float distance_m = 0.f; float stddev_m = 15.f; bool valid = false; };
 
     void  init_from(float dist_m, float stddev_m);
     void  predict(float dt_s);
-    void  weight_update(const DistanceMeasurement& ad, const DistanceMeasurement& tr);
-    void  normalise();
+    void  weight_update(const Meas& ad, const Meas& tr);
+    // Convert log-weights to normalised linear weights using the log-sum-exp trick.
+    // Never underflows — always returns a valid probability distribution.
+    std::vector<float> linear_weights() const;
     float effective_n() const;
     void  resample();
-
     static float gaussian_loglik(float z, float mean, float sigma);
 
-    Config                cfg_;
+    Config cfg_;
     std::vector<Particle> particles_;
-    bool                  initialised_ = false;
-    std::mt19937          rng_;
+    bool  initialised_ = false;
+    std::mt19937 rng_;
+
+    // ObjectFinder — null until first update() call when homography_path is set.
+    std::unique_ptr<tracking::ObjectFinder> tracker_;
 };
 
 }  // namespace visionpilot::fusion
