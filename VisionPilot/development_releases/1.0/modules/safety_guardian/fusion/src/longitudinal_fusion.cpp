@@ -75,11 +75,9 @@ LongitudinalFusion::LongitudinalFusion(Config cfg)
 void LongitudinalFusion::reset()
 {
     particles_.clear();
-    initialised_  = false;
-    prev_fused_d_ = -1.f;
-    velocity_ema_ = 0.f;
-    H_loaded_  = false;
-    H_            = cv::Mat();
+    initialised_ = false;
+    H_loaded_    = false;
+    H_           = cv::Mat();
 }
 
 CIPOFusionEstimate LongitudinalFusion::update(
@@ -131,42 +129,56 @@ CIPOFusionEstimate LongitudinalFusion::update(
         initialised_ = true;
     } else {
         predict(dt);
+
+        // ── Innovation gate ───────────────────────────────────────────────────
+        // If the CIPO target changes (cut-in or cut-out), the projected distance
+        // jumps in one direction or the other.  A single absolute-distance check
+        // on CIPO raw covers both:
+        //   cut-out → cipo_raw >> cloud  (farther car now tracked)
+        //   cut-in  → cipo_raw << cloud  (closer car appeared)
+        // Fall back to AD when CIPO raw has no detection (car fully left frame).
+        {
+            float cloud_mean = 0.f;
+            for (const auto& p : particles_) cloud_mean += p.distance_m;
+            cloud_mean /= static_cast<float>(particles_.size());
+
+            if (cipo_raw.valid &&
+                std::abs(cipo_raw.distance_m - cloud_mean) > cfg_.reset_gate_m) {
+                VP_INFO("[Fusion] Target change — reinit %.1f→%.1f m (CIPO)",
+                        cloud_mean, cipo_raw.distance_m);
+                init_from(cipo_raw.distance_m, cfg_.cipo_noise_m);
+            } else if (ad_meas.valid &&
+                       (ad_meas.distance_m - cloud_mean) > cfg_.reset_gate_m) {
+                // CIPO not detected but AD jumped up — car left the lane entirely
+                VP_INFO("[Fusion] Cut-out (no CIPO) — reinit %.1f→%.1f m (AD)",
+                        cloud_mean, ad_meas.distance_m);
+                init_from(ad_meas.distance_m, ad_meas.stddev_m);
+            }
+        }
     }
 
     weight_update(ad_meas, cipo_raw);
     if (effective_n() < 0.5f * static_cast<float>(cfg_.n_particles)) resample();
 
-    // ── Step 5: Posterior distance (weighted mean + stddev) ───────────────────
-    const auto   w      = linear_weights();
-    const auto   N      = particles_.size();
-    float mean_d = 0.f;
-    for (std::size_t i = 0; i < N; ++i) mean_d += w[i] * particles_[i].distance_m;
-    float var_d  = 0.f;
+    // ── Step 5: Posterior mean — weighted particle average (MRPT getMean style) ─
+    // Both distance and velocity come directly from the particle ensemble.
+    // No EMA, no finite difference, no deadband needed.
+    const auto w = linear_weights();
+    const auto N = particles_.size();
+    float mean_d = 0.f, mean_v = 0.f;
+    for (std::size_t i = 0; i < N; ++i) {
+        mean_d += w[i] * particles_[i].distance_m;
+        mean_v += w[i] * particles_[i].velocity_ms;
+    }
+    float var_d = 0.f;
     for (std::size_t i = 0; i < N; ++i) {
         const float dd = particles_[i].distance_m - mean_d;
         var_d += w[i] * dd * dd;
     }
 
-    // ── Step 6: Velocity = EMA-smoothed finite difference of fused distance ───
-    // The PF velocity particles are unreliable when only distance is observed and
-    // measurements are noisy (they accumulate a biased random walk).  A simple
-    // numerical derivative is far more consistent with the displayed distances.
-    float vel = 0.f;
-    if (prev_fused_d_ >= 0.f && dt > 1e-6f) {
-        const float raw_vel = (mean_d - prev_fused_d_) / dt;
-        // Deadband: PF drift (~0.1 m/frame at 10 fps = 1 m/s) must exceed
-        // threshold before it registers as real motion.
-        const float gated = (std::abs(raw_vel) >= cfg_.velocity_deadband_ms)
-                            ? raw_vel : 0.f;
-        velocity_ema_ = cfg_.velocity_ema_alpha * gated
-                      + (1.f - cfg_.velocity_ema_alpha) * velocity_ema_;
-        vel = velocity_ema_;
-    }
-    prev_fused_d_ = mean_d;
-
     est.valid             = true;
     est.distance_m        = mean_d;
-    est.velocity_ms       = vel;
+    est.velocity_ms       = mean_v;
     est.distance_stddev_m = std::sqrt(std::max(0.f, var_d));
 
     // ── Step 7: Debug log ─────────────────────────────────────────────────────
@@ -227,7 +239,6 @@ LongitudinalFusion::select_cipo(const std::vector<models::Detection>& dets) cons
     const bool have_l2 = best_l2 < std::numeric_limits<float>::max();
 
     if (have_l2 && have_l1 && best_l2 < best_l1) {
-        // Level 2 closer than Level 1 → cut-in
         sel.meas.distance_m = best_l2;
         sel.meas.valid      = true;
         sel.cut_in          = true;

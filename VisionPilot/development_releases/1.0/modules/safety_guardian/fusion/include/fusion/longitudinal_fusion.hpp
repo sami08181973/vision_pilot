@@ -16,7 +16,7 @@ struct CIPOFusionEstimate {
 
     // Particle-filter fused posterior
     float distance_m        = 0.f;
-    float velocity_ms       = 0.f;   // negative = approaching; derived as Δd/Δt
+    float velocity_ms       = 0.f;   // negative = approaching; from particle ensemble
     float distance_stddev_m = 0.f;
 
     // Raw CIPO distance from AutoSpeed bboxes via homography (no tracking state)
@@ -28,13 +28,10 @@ struct CIPOFusionEstimate {
 // ─── LongitudinalFusion ────────────────────────────────────────────────────────
 //
 //  Per-frame CIPO longitudinal estimation:
-//    1. If homography_path is set: project AutoSpeed bbox bottom-centres through H
-//       to world space and take the closest in-front detection as a distance measure.
-//    2. Particle filter (state: [distance_m, velocity_ms]) fuses AutoDrive output
-//       and the homography distance, using log-weight accumulation (MRPT style).
-//    3. Velocity is reported as an EMA-smoothed finite difference of the fused
-//       distance, NOT from the PF velocity particles (which are unreliable when
-//       only distance is observed and measurements are noisy).
+//    1. Project AutoSpeed Level 1 / Level 2 bbox bottom-centres through H.
+//    2. Particle filter [distance_m, velocity_ms] fuses AutoDrive + CIPO raw.
+//       Log-weight accumulation (MRPT style), velocity from weighted particle mean.
+//    3. Innovation gate resets the filter on genuine cut-in / cut-out events.
 //
 class LongitudinalFusion {
 public:
@@ -42,15 +39,14 @@ public:
         int   n_particles          = 500;
         float d_max_m              = 150.f;
         float dt_s                 = 0.10f;   // nominal dt; overridden per-call
-        float process_noise_dist_m = 0.50f;
-        float process_noise_vel_ms = 0.20f;   // used inside PF predict only
+        // Keep small (MRPT uses 0.03 m). Large values cause particle drift → bad velocity.
+        float process_noise_dist_m = 0.05f;
+        float process_noise_vel_ms = 0.20f;   // matches MRPT TRANSITION_MODEL_STD_VXY
         float autodrive_noise_m    = 15.f;
-        float cipo_noise_m         = 5.f;     // CIPO raw distance 1-sigma noise
-        // EMA factor for velocity smoothing (higher = more responsive, noisier).
-        float velocity_ema_alpha   = 0.3f;
-        // Deadband: raw Δd/Δt below this threshold is treated as 0 before EMA.
-        // Prevents particle-filter drift (~0.1 m/frame) from registering as motion.
-        float velocity_deadband_ms = 0.5f;
+        float cipo_noise_m         = 5.f;
+        // Reinitialise filter when a reliable measurement jumps this far from
+        // the particle cloud — handles genuine cut-in / cut-out events.
+        float reset_gate_m         = 25.f;
         std::string homography_path = "";
         bool debug = false;
     };
@@ -71,9 +67,6 @@ private:
     struct Particle { float distance_m, velocity_ms, log_w; };
     struct Meas     { float distance_m = 0.f; float stddev_m = 15.f; bool valid = false; };
 
-    // Projects all Level 1 and Level 2 AutoSpeed detections through H.
-    // Returns the measurement to fuse and sets cut_in=true when the closest
-    // Level 2 is nearer than the closest Level 1 (cut-in scenario).
     struct CIPOSelection { Meas meas; bool cut_in = false; };
     CIPOSelection select_cipo(const std::vector<models::Detection>& dets) const;
     static float project_dist(const cv::Mat& H, float ux, float uy);
@@ -88,12 +81,9 @@ private:
 
     Config cfg_;
     std::vector<Particle> particles_;
-    bool   initialised_   = false;
-    float  prev_fused_d_  = -1.f;  // for velocity finite difference
-    float  velocity_ema_  = 0.f;
+    bool   initialised_ = false;
     std::mt19937 rng_;
 
-    // Homography matrix — loaded once from cfg_.homography_path
     cv::Mat H_;
     bool    H_loaded_ = false;
 };
