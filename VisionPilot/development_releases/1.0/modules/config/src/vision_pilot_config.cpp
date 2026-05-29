@@ -132,6 +132,9 @@ VisionPilotConfig load_vision_pilot_config(const std::string& path)
 
     cfg.fusion_debug = parse_bool(optional(kv, "fusion.debug", "false"), "fusion.debug");
 
+    { const std::string raw = optional(kv, "debug.wheel_dir", "");
+      cfg.wheel_dir = raw.empty() ? "" : expand_home(raw); }
+
     // Validate file paths
     if (cfg.source.mode == SourceMode::Video) {
         if (cfg.source.video_path.empty())
