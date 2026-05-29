@@ -193,7 +193,8 @@ LateralFusionEstimate LateralFusion::update(
             std::snprintf(path_buf, sizeof(path_buf), "(no path fit, %d pts)", est.path_points);
 
         if (ad_curv_valid)
-            std::snprintf(ad_buf, sizeof(ad_buf), "%.4f", ad_curv);
+            std::snprintf(ad_buf, sizeof(ad_buf), "%.4f (raw=%.4f)",
+                          ad_curv, drive.curvature_raw);
         else
             std::snprintf(ad_buf, sizeof(ad_buf), "(none)");
 
@@ -207,22 +208,40 @@ LateralFusionEstimate LateralFusion::update(
 
 // ─── Waypoint projection ──────────────────────────────────────────────────────
 //
-//  AutoSteer xp layout (row-major flat):
-//    xp[0..63]   = u values (image x, pixels in preprocessed 1024×512 frame)
-//    xp[64..127] = v values (image y, pixels in preprocessed 1024×512 frame)
-//  All 64 waypoints are projected unconditionally — no filtering.
+//  Matches Models/visualizations/AutoSteer/video_visualization.py:
+//    yp[i] = linspace(0, NET_H-1, 64)
+//    u = xp[row, i] * NET_W  (masked by h_vector[row, i] >= 0.5)
+//  For RANSAC we use the midpoint of row 0 and row 1 at each y (ego centerline).
 //
 std::vector<LateralFusion::WorldPt>
 LateralFusion::project_waypoints(const models::AutoSteerOutput& steer) const
 {
-    static constexpr int N_WP = 64;
+    static constexpr int N_WP  = 64;
+    static constexpr int N_ROW = 2;
+    static constexpr float NET_W = 1024.f;
+    static constexpr float NET_H = 512.f;
+
     std::vector<WorldPt> out;
     out.reserve(N_WP);
 
     for (int i = 0; i < N_WP; ++i) {
-        const float u = steer.xp[i];
-        const float v = steer.xp[N_WP + i];
-        auto [xw, yw] = project_world(H_, u, v);
+        const float v_px = (N_WP <= 1) ? 0.f
+            : static_cast<float>(i) * (NET_H - 1.f) / static_cast<float>(N_WP - 1);
+
+        float u_sum = 0.f;
+        int   n     = 0;
+        for (int row = 0; row < N_ROW; ++row) {
+            const int idx = row * N_WP + i;
+            if (steer.h_vector[idx] < 0.5f) continue;
+            u_sum += steer.xp[idx] * NET_W;
+            ++n;
+        }
+        if (n == 0) continue;
+
+        const float u_px = u_sum / static_cast<float>(n);
+        auto [xw, yw] = project_world(H_, u_px, v_px);
+        // Keep points in a sensible forward range for the polynomial fit
+        if (xw < 0.5f || xw > 120.f) continue;
         out.push_back({xw, yw});
     }
     return out;
@@ -286,6 +305,8 @@ LateralFusion::fit_ransac(const std::vector<WorldPt>& pts) const
     if (static_cast<int>(best_inliers_pts.size()) >= 3) {
         PathParams final_fit = fit_quadratic(best_inliers_pts);
         final_fit.inliers    = static_cast<int>(best_inliers_pts.size());
+        if (final_fit.inliers < cfg_.ransac_min_inliers) return {};
+        if (std::abs(final_fit.cte_m) > cfg_.max_abs_cte_m) return {};
         return final_fit;
     }
     return {};

@@ -40,8 +40,9 @@ struct LateralFusionEstimate {
 // ─── LateralFusion ────────────────────────────────────────────────────────────
 //
 //  Per-frame lateral pipeline:
-//    1. Project all 64 AutoSteer (u,v) waypoints to world (x=forward, y=lateral) via H.
-//       xp row-0 = u [px], row-1 = v [px].  All points projected, no filtering.
+//    1. Project AutoSteer waypoints to world via H (matches video_visualization.py):
+//       xp is (2,64): row = lane boundary, col = fixed image row (y = linspace).
+//       u = xp[row,i] * 1024, v = image row i; mask with h_vector >= 0.5.
 //    2. 2nd-order polynomial RANSAC on world points:
 //         y_lateral = a·x² + b·x + c
 //       → CTE = c, Yaw = atan(b), Curvature = |2a|/(1+b²)^1.5
@@ -73,9 +74,10 @@ public:
         int   ransac_iters           = 50;
         int   ransac_min_pts         = 5;       // min projected points to attempt fit
 
-        // Scale applied to AutoDrive curvature_raw → physical curvature [1/m].
-        // Calibrate once the model's output range is characterised.
-        float ad_curvature_scale     = 1.0f;
+        // curvature_raw × scale → physical κ [1/m] (CURV_SCALE = 0.21 in training).
+        float ad_curvature_scale     = 0.21f;
+        int   ransac_min_inliers     = 20;      // reject path fit if fewer inliers
+        float max_abs_cte_m          = 4.0f;    // reject absurd RANSAC CTE
 
         // Same YAML used by LongitudinalFusion (shared config field).
         std::string homography_path  = "";
