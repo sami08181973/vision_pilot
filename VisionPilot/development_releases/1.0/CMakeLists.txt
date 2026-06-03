@@ -21,10 +21,19 @@ option(ENABLE_ROS2_INTERFACE "Enable ROS2 support" OFF)
 
 set(Python3_EXECUTABLE /usr/bin/python3.10 CACHE FILEPATH "" FORCE)
 find_package(Python3 REQUIRED)
-# Homography transformation
+
+# Preprocess C: your full-frame ground H (YAML) + fixed VisionPilot model V in script
+set(VISIONPILOT_GROUND_HOMOGRAPHY "" CACHE FILEPATH "Full-frame ground H YAML (pixel -> world)")
+
+if(VISIONPILOT_GROUND_HOMOGRAPHY STREQUAL "")
+    message(FATAL_ERROR
+        "Set -DVISIONPILOT_GROUND_HOMOGRAPHY=<your_full_frame_H.yaml> when configuring.")
+endif()
+
 add_custom_target(generate_config ALL
         COMMAND Python3::Interpreter
         ${CMAKE_SOURCE_DIR}/scripts/find_homography_C_matrix.py
+        --ground-h ${VISIONPILOT_GROUND_HOMOGRAPHY}
 )
 
 # Modules
