@@ -31,10 +31,12 @@ struct LateralFusionEstimate {
     bool  path_valid         = false;  // RANSAC polynomial fit succeeded
     float raw_cte_m          = 0.f;   // CTE direct from polynomial (= c-coeff)
     float raw_yaw_rad        = 0.f;   // yaw direct from polynomial (= atan(b))
-    float raw_path_curvature = 0.f;   // curvature from polynomial fit
+    float raw_path_curvature = 0.f;   // κ sampled along fitted path (median)
     float raw_ad_curvature   = 0.f;   // curvature_raw from AutoDrive (scaled)
     int   path_inliers       = 0;     // RANSAC inlier count
     int   path_points        = 0;     // world points projected from waypoints
+    // Fitted polynomial y = path_a·x² + path_b·x + path_c  (world frame)
+    float path_a = 0.f, path_b = 0.f, path_c = 0.f;
 };
 
 // ─── LateralFusion ────────────────────────────────────────────────────────────
@@ -45,7 +47,7 @@ struct LateralFusionEstimate {
 //       u = xp[row,i] * 1024, v = image row i; mask with h_vector >= 0.5.
 //    2. 2nd-order polynomial RANSAC on world points:
 //         y_lateral = a·x² + b·x + c
-//       → CTE = c, Yaw = atan(b), Curvature = |2a|/(1+b²)^1.5
+//       → CTE = c, Yaw = atan(b), Curvature = median κ(x) with κ = 2a/(1+(2ax+b)²)^1.5
 //    3. CTE/Yaw particle filter: state [cte, yaw], random-walk process,
 //       Gaussian update from step-2 when path is valid.
 //    4. Curvature particle filter: state [curv], fuses
@@ -78,6 +80,7 @@ public:
         float ad_curvature_scale     = 0.21f;
         int   ransac_min_inliers     = 20;      // reject path fit if fewer inliers
         float max_abs_cte_m          = 4.0f;    // reject absurd RANSAC CTE
+        int   curv_sample_count      = 7;       // κ samples along x for median
 
         // Same YAML used by LongitudinalFusion (shared config field).
         std::string homography_path  = "";
@@ -106,14 +109,17 @@ private:
         float c         = 0.f;
         float cte_m     = 0.f;        // = c
         float yaw_rad   = 0.f;        // = atan(b)
-        float curvature = 0.f;        // |2a| / (1 + b²)^1.5
+        float curvature = 0.f;        // median κ(x) along path
         int   inliers   = 0;
     };
 
     std::vector<WorldPt> project_waypoints(const models::AutoSteerOutput& steer) const;
     PathParams           fit_ransac(const std::vector<WorldPt>& pts) const;
-    static PathParams    fit_quadratic(const std::vector<WorldPt>& pts);
+    static PathParams    fit_quadratic(const std::vector<WorldPt>& pts, int curv_samples);
     static float         eval_quad(float a, float b, float c, float x);
+    static float         curvature_at_x(float a, float b, float x);
+    static float         sample_path_curvature(const std::vector<WorldPt>& pts,
+                                               float a, float b, int n_samples);
 
     // Project a single image point (u,v) → (x_forward [m], y_lateral [m])
     static std::pair<float, float> project_world(const cv::Mat& H, float u, float v);
