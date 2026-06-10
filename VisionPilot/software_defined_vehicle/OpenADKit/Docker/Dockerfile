@@ -152,7 +152,10 @@ COPY --from=devel /autoware/onnxruntime/lib /autoware/onnxruntime/lib
 COPY --from=devel /autoware/autospeed_infer_stream /autoware/autospeed_infer_stream
 COPY --from=devel /autoware/homography.yaml /autoware/homography.yaml
 
-# Python inference and visualization code only (no training/data tooling)
+# Python inference and visualization code only (no training/data tooling).
+# AutoDrive is dropped: it is not an Open AD Kit demo and is the only visualizer
+# that imports Models/data_utils, which the runtime image deliberately omits.
 COPY Models/inference /autoware/Models/inference
 COPY Models/model_components /autoware/Models/model_components
 COPY Models/visualizations /autoware/Models/visualizations
+RUN rm -rf /autoware/Models/visualizations/AutoDrive
