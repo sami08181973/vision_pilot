@@ -27,6 +27,7 @@ target_link_libraries(VisionPilot
     camera_interface
     image_preprocessing
     visualization
+    vp_debug         # Debug annotate_frame
 )
 
 # Suppress unresolved-symbol errors from system shared libs (gdal→curl, ICU from miniforge3)
