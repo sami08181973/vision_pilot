@@ -1,16 +1,15 @@
 add_executable(VisionPilot
-    vision_pilot.cpp
+        vision_pilot.cpp
 )
 
 add_dependencies(VisionPilot generate_config)
 
 if (ENABLE_ROS2_INTERFACE)
-    target_link_libraries(VisionPilot
-            PRIVATE
-            camera_subscriber
-            vehicle_ros2_interface
-    )
+    find_package(rclcpp REQUIRED)
+    find_package(std_msgs REQUIRED)
 
+    target_link_libraries(VisionPilot PUBLIC rclcpp::rclcpp)
+    target_link_libraries(VisionPilot PRIVATE camera_subscriber vehicle_ros2_interface)
     target_compile_definitions(VisionPilot PRIVATE ENABLE_ROS2_INTERFACE)
 endif ()
 

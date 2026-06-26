@@ -20,7 +20,7 @@
 #include <vehicle_interface/vehicle_interface.hpp>
 #include <vehicle_interface/can_interface.hpp>
 
-#ifdef ENABLE_ROS2_INTERFACE
+#if ENABLE_ROS2_INTERFACE
 #include <rclcpp/rclcpp.hpp>
 #include <vehicle_ros2_interface/vehicle_ros2_interface.hpp>
 #endif
@@ -31,10 +31,11 @@ namespace vd = visionpilot::debug;
 
 int main(int argc, char** argv)
 {
-    const std::string cfg_path = resolve_vision_pilot_config_path(argc, argv);
-    if (cfg_path.empty())
+    Config cfg;
+    try { cfg = load_vision_pilot_config(); }
+    catch (const std::exception& e)
     {
-        VP_ERROR("No config — cp config/vision_pilot.conf.example config/vision_pilot.conf");
+        VP_ERROR("Config: %s", e.what());
         return 1;
     }
 
@@ -53,18 +54,12 @@ int main(int argc, char** argv)
     std::shared_ptr<VehicleInterface> vehicle_interface;
 #ifdef ENABLE_ROS2_INTERFACE
     rclcpp::init(argc, argv);
-    vehicle_interface = std::make_shared<VehicleRos2Interface>();
+    vehicle_interface = std::make_shared<VehicleRos2Interface>(cfg.vehicle_speed_topic,
+                                                               cfg.vehicle_steering_topic,
+                                                               cfg.vehicle_acceleration_topic);
 #else
     vehicle_interface = std::make_shared<CanInterface>();
 #endif
-
-    VisionPilotConfig cfg;
-    try { cfg = load_vision_pilot_config(cfg_path); }
-    catch (const std::exception& e)
-    {
-        VP_ERROR("Config: %s", e.what());
-        return 1;
-    }
 
     ImagePreprocessor preprocessor;
     ve::OnnxEngine engine(cfg.engine);
