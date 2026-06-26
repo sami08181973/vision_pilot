@@ -101,6 +101,11 @@ public:
 
     void reset();
 
+    // Override the internal H matrix used to project AutoSteer waypoints to
+    // world space.  Call once after construction when the network runs on a
+    // non-BEV image (e.g. plain-resized frame) that requires a different H.
+    void set_H(const cv::Mat& H) { H_ = H.clone(); }
+
 private:
     // ── Path processing ───────────────────────────────────────────────────────
     struct WorldPt { float x, y; };   // x = forward [m], y = lateral [m, +left]
