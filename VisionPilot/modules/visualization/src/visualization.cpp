@@ -302,21 +302,9 @@ static void draw_speed(cv::Mat& img, double speed_ms) {
     const int tx = (img.cols - ts.width) / 2;
     const int ty = 44;
 
-    cv::putText(img, buf, cv::Point(tx + 2, ty + 2),
-                cv::FONT_HERSHEY_DUPLEX, 1.1,
-                cv::Scalar(0, 0, 0), 3, cv::LINE_AA);
     cv::putText(img, buf, cv::Point(tx, ty),
                 cv::FONT_HERSHEY_DUPLEX, 1.1,
                 cv::Scalar(255, 255, 255), 2, cv::LINE_AA);
-
-    // "EGO" label below the number so it's unambiguous
-    constexpr char kEgoLabel[] = "EGO";
-    int bl2 = 0;
-    const cv::Size ls = cv::getTextSize(kEgoLabel, cv::FONT_HERSHEY_SIMPLEX, 0.40, 1, &bl2);
-    cv::putText(img, kEgoLabel,
-                cv::Point((img.cols - ls.width) / 2, ty + 16),
-                cv::FONT_HERSHEY_SIMPLEX, 0.40,
-                cv::Scalar(180, 180, 180), 1, cv::LINE_AA);
 }
 
 // ─── Draw: alert overlays + icons ────────────────────────────────────────────
