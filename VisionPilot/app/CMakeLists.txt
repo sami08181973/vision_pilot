@@ -65,12 +65,12 @@ install(FILES ${VISIONPILOT_CONF_FILES}
 #)
 
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/modules/models/weights/"
-        DESTINATION "share/visionpilot/modules/models/weights"
+        DESTINATION "/usr/share/visionpilot/modules/models/weights"
         FILES_MATCHING
         PATTERN "*.onnx"
         PATTERN "trt_cache" EXCLUDE
 )
 
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/onnxruntime/"
-        DESTINATION "share/visionpilot/onnxruntime"
+        DESTINATION "/usr/share/visionpilot/onnxruntime"
 )
