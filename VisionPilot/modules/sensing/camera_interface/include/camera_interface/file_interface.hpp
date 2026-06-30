@@ -8,9 +8,9 @@
 
 namespace camera_interface {
 
-class VideoFileInterface : public CameraInterface {
+class FileInterface : public CameraInterface {
 public:
-    VideoFileInterface(const std::string& path, bool loop, bool realtime);
+    FileInterface(const std::string& path, bool loop, bool realtime);
 
     bool is_device_open() const override;
     std::tuple<bool, cv::Mat> get_latest_frame() override;

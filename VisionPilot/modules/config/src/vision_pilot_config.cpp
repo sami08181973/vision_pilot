@@ -158,11 +158,23 @@ Config load_vision_pilot_config()
     if (cfg.source.mode == SourceMode::Video) {
         kv = parse_conf(find_config("vision_pilot_test.conf"));
 
-        cfg.source.video_path    = expand_home(optional(kv, "source.video_path", ""));
-        if (cfg.source.video_path.empty())
-            throw std::runtime_error("source.mode=video requires source.video_path");
-        if (!file_ok(cfg.source.video_path))
-            throw std::runtime_error("source.video_path not found: " + cfg.source.video_path);
+        // Load input video config
+        cfg.source.input_video = optional(kv, "source.input_video", "");
+        if (cfg.source.input_video.empty())
+            throw std::runtime_error("source.mode=video requires source.input_video");
+        if (!file_ok(cfg.source.input_video))
+            throw std::runtime_error("source.video_path not found: " + cfg.source.input_video);
+        // Load input vehicle speed config
+        cfg.source.input_vehicle_speed = optional(kv, "source.input_vehicle_speed", "");
+        if (cfg.source.input_vehicle_speed.empty())
+            throw std::runtime_error("source.mode=video requires source.input_vehicle_speed");
+        if (!file_ok(cfg.source.input_vehicle_speed))
+            throw std::runtime_error("source.video_path not found: " + cfg.source.input_vehicle_speed);
+        // Load dataset config
+        cfg.source.dataset = optional(kv, "source.dataset", "");
+        if (cfg.source.dataset.empty())
+            throw std::runtime_error("source.mode=video requires source.dataset");
+
         cfg.source.video_realtime= parse_bool(optional(kv, "source.video_realtime", "true"), "source.video_realtime");
         cfg.source.video_loop    = parse_bool(optional(kv, "source.video_loop",     "false"), "source.video_loop");
     }

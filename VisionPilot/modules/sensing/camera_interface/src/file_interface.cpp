@@ -1,10 +1,10 @@
-#include "camera_interface/video_file_interface.hpp"
+#include "camera_interface/file_interface.hpp"
 
 #include <thread>
 
 namespace camera_interface {
 
-VideoFileInterface::VideoFileInterface(const std::string& path, bool loop, bool realtime)
+FileInterface::FileInterface(const std::string& path, bool loop, bool realtime)
     : path_(path), loop_(loop), realtime_(realtime)
 {
     cap_.open(path);
@@ -18,12 +18,12 @@ VideoFileInterface::VideoFileInterface(const std::string& path, bool loop, bool 
     }
 }
 
-bool VideoFileInterface::is_device_open() const
+bool FileInterface::is_device_open() const
 {
     return cap_.isOpened();
 }
 
-std::tuple<bool, cv::Mat> VideoFileInterface::get_latest_frame()
+std::tuple<bool, cv::Mat> FileInterface::get_latest_frame()
 {
     const auto t0 = std::chrono::steady_clock::now();
 
@@ -49,7 +49,7 @@ std::tuple<bool, cv::Mat> VideoFileInterface::get_latest_frame()
     return {true, frame};
 }
 
-std::vector<std::string> VideoFileInterface::get_overlay() const
+std::vector<std::string> FileInterface::get_overlay() const
 {
     return {"video: " + path_};
 }
