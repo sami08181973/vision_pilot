@@ -11,7 +11,9 @@ enum class SourceMode { Ros2 = 0, V4l2 = 1, Video = 2 };
 
 struct SourceConfig {
     SourceMode  mode         = SourceMode::Video;
-    std::string video_path;
+    std::string input_video;
+    std::string input_vehicle_speed;
+    std::string dataset;
     bool        video_realtime = true;
     bool        video_loop     = false;
     std::string input_camera_topic   = "/camera/image";
