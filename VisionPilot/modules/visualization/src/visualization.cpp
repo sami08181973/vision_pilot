@@ -213,6 +213,21 @@ static void draw_path_corridor(cv::Mat& img, const ProductionView& view) {
     cv::addWeighted(overlay, 0.35, img, 0.65, 0.0, img);
 }
 
+// AutoSpeed bbox colors — match debug_draw.cpp det_color()
+static cv::Scalar autospeed_det_color(int class_id) {
+    switch (class_id) {
+        case 1: return cv::Scalar(0, 0, 220);     // L1 red
+        case 2: return cv::Scalar(0, 210, 255);   // L2 yellow
+        case 3: return cv::Scalar(220, 200, 0);   // L3 blue
+        default: return cv::Scalar(80, 200, 80);  // other green
+    }
+}
+
+static cv::Scalar autospeed_det_fill(int class_id) {
+    const cv::Scalar c = autospeed_det_color(class_id);
+    return cv::Scalar(c[0] * 0.35, c[1] * 0.35, c[2] * 0.35);
+}
+
 // ─── Draw: AutoSpeed bounding boxes + CIPO distance label ─────────────────────
 static void draw_cipo_boxes(cv::Mat& img, const ProductionView& view) {
     if (view.detections.empty()) return;
@@ -220,29 +235,23 @@ static void draw_cipo_boxes(cv::Mat& img, const ProductionView& view) {
     // Semi-transparent fill pass
     cv::Mat overlay = img.clone();
     for (const auto& d : view.detections) {
-        const cv::Scalar fill = (d.class_id == 1)
-            ? cv::Scalar(30, 30, 200)    // red  — same-lane (Level 1)
-            : cv::Scalar(200, 80,  30);  // blue — adjacent  (Level 2)
         cv::rectangle(overlay,
             cv::Point(static_cast<int>(d.x1), static_cast<int>(d.y1)),
             cv::Point(static_cast<int>(d.x2), static_cast<int>(d.y2)),
-            fill, -1);
+            autospeed_det_fill(d.class_id), -1);
     }
     cv::addWeighted(overlay, 0.32, img, 0.68, 0.0, img);
 
     // Outline pass (hard edges on top)
     for (const auto& d : view.detections) {
-        const cv::Scalar outline = (d.class_id == 1)
-            ? cv::Scalar(0,   0,   240)
-            : cv::Scalar(240, 110,  30);
         cv::rectangle(img,
             cv::Point(static_cast<int>(d.x1), static_cast<int>(d.y1)),
             cv::Point(static_cast<int>(d.x2), static_cast<int>(d.y2)),
-            outline, 2, cv::LINE_AA);
+            autospeed_det_color(d.class_id), 2, cv::LINE_AA);
     }
 
     // ── Distance label on the closest L1 (most centred) ──────────────────────
-    if (view.cipo.valid && view.cipo.distance_m < kDMax) {
+    if (view.cipo.valid && view.cipo.distance_m > 0.f) {
         const ProductionView::BBox* best = nullptr;
         float best_cx_err = 1e9f;
         for (const auto& d : view.detections) {
@@ -438,7 +447,7 @@ static void draw_speed_limit(cv::Mat& img, double speed_limit_ms) {
 }
 
 // ─── Draw: AutoDrive-only in-path CIPO arrow (AD detects, AutoSpeed misses) ──
-// Projects AD distance onto image using world→px H, draws a red downward arrow.
+// Projects AD distance onto the fused path centerline; Comma-style filled triangle.
 static void draw_ad_only_cipo(cv::Mat& img, const ProductionView& view) {
     if (!view.ad_cipo_only) return;
     if (view.ad_distance_m <= 0.f || view.ad_distance_m >= kDMax) return;
@@ -446,8 +455,13 @@ static void draw_ad_only_cipo(cv::Mat& img, const ProductionView& view) {
     const cv::Mat& H_w2px = (!view.H_world2px.empty()) ? view.H_world2px : g_H_world2px;
     if (H_w2px.empty()) return;
 
-    // Project world point (ad_distance_m ahead, 0 lateral) → image pixel
-    std::vector<cv::Point2f> src = {cv::Point2f(view.ad_distance_m, 0.f)}, dst;
+    // Place on path center at AD distance (not fixed lateral y=0).
+    const float xw = view.ad_distance_m;
+    float yw = 0.f;
+    if (view.path_valid)
+        yw = view.path_a * xw * xw + view.path_b * xw + view.path_c;
+
+    std::vector<cv::Point2f> src = {cv::Point2f(xw, yw)}, dst;
     cv::perspectiveTransform(src, dst, H_w2px);
 
     const int px = static_cast<int>(std::lround(dst[0].x));
@@ -455,31 +469,32 @@ static void draw_ad_only_cipo(cv::Mat& img, const ProductionView& view) {
 
     if (px < 0 || px >= img.cols || py < 0 || py >= img.rows) return;
 
-    // Red downward triangle arrow
-    const int aw = 28, ah = 36;
-    const std::vector<cv::Point> tri = {
-        cv::Point(px,      py + ah),   // tip (bottom)
-        cv::Point(px - aw, py),         // top-left
-        cv::Point(px + aw, py),         // top-right
-    };
-    cv::fillConvexPoly(img, tri, cv::Scalar(0, 0, 230), cv::LINE_AA);
-    cv::polylines(img, tri, true, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+    // Comma-style: filled orange triangle, tip toward horizon (30% smaller than original).
+    static constexpr int kAw = 20;
+    static constexpr int kAh = 25;
+    static const cv::Scalar kOrange(80, 180, 255);  // BGR — soft orange
 
-    // Distance label above the arrow
+    const std::vector<cv::Point> tri = {
+        cv::Point(px,      py - kAh),   // tip — ahead on path
+        cv::Point(px - kAw, py),         // base-left
+        cv::Point(px + kAw, py),         // base-right
+    };
+    cv::fillConvexPoly(img, tri, kOrange, cv::LINE_AA);
+    cv::polylines(img, tri, true, kOrange, 1, cv::LINE_AA);
+
     char lbl[16];
     std::snprintf(lbl, sizeof(lbl), "%.0fm", static_cast<double>(view.ad_distance_m));
     int bl = 0;
     cv::Size ts = cv::getTextSize(lbl, cv::FONT_HERSHEY_SIMPLEX, 0.52, 2, &bl);
     const int tx = px - ts.width / 2;
-    const int ty = py - 8;
+    const int ty = py - kAh - 8;
     if (ty > ts.height) {
         cv::rectangle(img,
             cv::Point(tx - 4, ty - ts.height - 2),
             cv::Point(tx + ts.width + 4, ty + 4),
             cv::Scalar(20, 20, 20), -1);
         cv::putText(img, lbl, cv::Point(tx, ty),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.52,
-                    cv::Scalar(0, 0, 230), 2, cv::LINE_AA);
+                    cv::FONT_HERSHEY_SIMPLEX, 0.52, kOrange, 2, cv::LINE_AA);
     }
 }
 

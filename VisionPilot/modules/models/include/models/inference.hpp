@@ -64,7 +64,7 @@ public:
     // (non-BEV) image.  Call once after the first preprocess() when using
     // the resized routing.
     //   C        : raw-camera → warped-BEV homography (from ImagePreprocessor)
-    //   raw_size : original frame dimensions before resize
+    //   raw_size : original frame dimensions before top-crop + resize
     void set_H_resized(const cv::Mat& H, cv::Size raw_size);
 
     // H that maps resized-image pixel → world (set after set_H_resized()).

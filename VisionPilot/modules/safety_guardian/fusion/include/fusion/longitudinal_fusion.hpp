@@ -39,13 +39,17 @@ public:
         float d_max_m              = 150.f;
         float dt_s                 = 0.10f;   // nominal dt; overridden per-call
         // Keep small (MRPT uses 0.03 m). Large values cause particle drift → bad velocity.
-        float process_noise_dist_m = 0.05f;
-        float process_noise_vel_ms = 0.20f;   // matches MRPT TRANSITION_MODEL_STD_VXY
-        float autodrive_noise_m    = 15.f;
-        float cipo_noise_m         = 5.f;
-        // Reinitialise filter when a reliable measurement jumps this far from
-        // the particle cloud — handles genuine cut-in / cut-out events.
-        float reset_gate_m         = 25.f;
+        float process_noise_dist_m  = 2.0f;
+        float process_noise_vel_ms  = 0.50f;
+        // AD noise is scaled by confidence: tight when flag_prob≈1, loose when flag_prob≈threshold.
+        // at p=1.00 → stddev = autodrive_noise_min_m  (AD dominates)
+        // at p=0.40 → stddev = autodrive_noise_m       (CIPO can dominate)
+        float autodrive_noise_min_m = 1.5f;   // noise floor when AD is fully confident
+        float autodrive_noise_m     = 8.f;    // noise ceiling at minimum AD confidence
+        float cipo_noise_m          = 3.f;    // CIPO bbox-projected distance noise
+        // Reinitialise filter when a measurement jumps this far from the
+        // particle cloud (genuine cut-in / cut-out only).
+        float reset_gate_m          = 25.f;
         bool  debug                = false;
     };
 

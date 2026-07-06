@@ -76,7 +76,9 @@ CIPOFusionEstimate LongitudinalFusion::update(
     Meas ad_meas;
     if (ad_cipo_confirmed) {
         ad_meas.distance_m = D_MAX * (1.f - autodrive.dist_normalized);
-        ad_meas.stddev_m   = cfg_.autodrive_noise_m;
+        const float p      = std::clamp(autodrive.flag_prob, 0.f, 1.f);
+        ad_meas.stddev_m   = cfg_.autodrive_noise_min_m +
+                             (cfg_.autodrive_noise_m - cfg_.autodrive_noise_min_m) * (1.f - p);
         ad_meas.valid      = true;
     }
 
@@ -84,42 +86,33 @@ CIPOFusionEstimate LongitudinalFusion::update(
     const float dt = (dt_s > 1e-6f) ? dt_s : cfg_.dt_s;
 
     if (!initialised_) {
-        // Prefer AD for first init; fall back to CIPO raw if AD isn't available.
         if (ad_meas.valid) {
             init_from(ad_meas.distance_m, ad_meas.stddev_m);
         } else if (cipo_raw.valid) {
             init_from(cipo_raw.distance_m, cfg_.cipo_noise_m);
         } else {
-            return est;   // nothing to init from — return default (distance_m=0 won't happen because we returned D_MAX above)
+            return est;
         }
         initialised_ = true;
     } else {
         predict(dt);
 
-        // ── Innovation gate ───────────────────────────────────────────────────
-        // If the CIPO target changes (cut-in or cut-out), the projected distance
-        // jumps in one direction or the other.  A single absolute-distance check
-        // on CIPO raw covers both:
-        //   cut-out → cipo_raw >> cloud  (farther car now tracked)
-        //   cut-in  → cipo_raw << cloud  (closer car appeared)
-        // Fall back to AD when CIPO raw has no detection (car fully left frame).
-        {
-            float cloud_mean = 0.f;
-            for (const auto& p : particles_) cloud_mean += p.distance_m;
-            cloud_mean /= static_cast<float>(particles_.size());
+        float cloud_mean = 0.f;
+        for (const auto& p : particles_) cloud_mean += p.distance_m;
+        cloud_mean /= static_cast<float>(particles_.size());
 
-            if (cipo_raw.valid &&
-                std::abs(cipo_raw.distance_m - cloud_mean) > cfg_.reset_gate_m) {
-                VP_INFO("[Fusion] Target change — reinit %.1f→%.1f m (CIPO)",
-                        cloud_mean, cipo_raw.distance_m);
-                init_from(cipo_raw.distance_m, cfg_.cipo_noise_m);
-            } else if (ad_meas.valid &&
-                       (ad_meas.distance_m - cloud_mean) > cfg_.reset_gate_m) {
-                // CIPO not detected but AD jumped up — car left the lane entirely
-                VP_INFO("[Fusion] Cut-out (no CIPO) — reinit %.1f→%.1f m (AD)",
-                        cloud_mean, ad_meas.distance_m);
-                init_from(ad_meas.distance_m, ad_meas.stddev_m);
-            }
+        const float gate = cfg_.reset_gate_m;
+
+        if (cipo_raw.valid &&
+            std::abs(cipo_raw.distance_m - cloud_mean) > gate) {
+            VP_INFO("[Fusion] Target change — reinit %.1f→%.1f m (CIPO)  gate=%.1f",
+                    cloud_mean, cipo_raw.distance_m, gate);
+            init_from(cipo_raw.distance_m, cfg_.cipo_noise_m);
+        } else if (ad_meas.valid &&
+                   (ad_meas.distance_m - cloud_mean) > gate) {
+            VP_INFO("[Fusion] Cut-out — reinit %.1f→%.1f m (AD)  gate=%.1f",
+                    cloud_mean, ad_meas.distance_m, gate);
+            init_from(ad_meas.distance_m, ad_meas.stddev_m);
         }
     }
 
@@ -151,9 +144,10 @@ CIPOFusionEstimate LongitudinalFusion::update(
     if (cfg_.debug) {
         char ad_buf[48], cr_buf[32];
         if (ad_meas.valid)
-            std::snprintf(ad_buf, sizeof(ad_buf), "%.1f m (p=%.0f%%)",
+            std::snprintf(ad_buf, sizeof(ad_buf), "%.1f m (p=%.0f%% σ=%.1fm)",
                           ad_meas.distance_m,
-                          autodrive.valid ? autodrive.flag_prob * 100.f : 0.f);
+                          autodrive.valid ? autodrive.flag_prob * 100.f : 0.f,
+                          ad_meas.stddev_m);
         else
             std::snprintf(ad_buf, sizeof(ad_buf), "(p=%.0f%% < %.0f%%)",
                           autodrive.valid ? autodrive.flag_prob * 100.f : 0.f,
@@ -194,10 +188,12 @@ LongitudinalFusion::select_cipo(const std::vector<models::Detection>& dets) cons
 
     for (const auto& d : dets) {
         if (d.class_id != 1 && d.class_id != 2) continue;
-        const float dist = project_dist(H_,
-                                        (d.x1 + d.x2) * 0.5f,
-                                        d.y2);
-        if (dist <= 0.f) continue;
+        const float cx   = (d.x1 + d.x2) * 0.5f;
+        const float dist = project_dist(H_, cx, d.y2);
+        if (cfg_.debug) {
+            VP_INFO("[CIPO-DBG] cls=%d  bbox=(%.0f,%.0f,%.0f,%.0f)  bottom-center=(%.0f,%.0f) → %.1f m",
+                    d.class_id, d.x1, d.y1, d.x2, d.y2, cx, d.y2, dist);
+        }
         if (d.class_id == 1 && dist < best_l1) best_l1 = dist;
         if (d.class_id == 2 && dist < best_l2) best_l2 = dist;
     }
