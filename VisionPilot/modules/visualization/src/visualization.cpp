@@ -107,7 +107,7 @@ static cv::Mat load_icon(const fs::path& p, int px) {
 // ─── Helper: locate assets folder ────────────────────────────────────────────
 static std::string resolve_icons_dir(const std::string& hint) {
     if (!hint.empty() && fs::is_directory(hint)) return hint;
-    for (const char* c : {"../assets/icons", "assets/icons", "VisionPilot/assets/icons"}) {
+    for (const char* c : {"../assets/icons", "assets/icons", "VisionPilot/assets/icons", "/usr/share/visionpilot/assets/icons"}) {
         if (fs::is_directory(c)) return std::string(c);
     }
     return {};

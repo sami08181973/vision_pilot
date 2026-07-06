@@ -10,14 +10,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
+# GPU support
+option(GPU "Enable GPU support" ON)
 
 # ROS2 packages
 option(ENABLE_ROS2_INTERFACE "Enable ROS2 support" OFF)
-
-# OpenCV packages
-#find_package(OpenCV REQUIRED)
-#find_package(cv_bridge REQUIRED)
-
 
 set(Python3_EXECUTABLE /usr/bin/python3 CACHE FILEPATH "" FORCE)
 find_package(Python3 REQUIRED)
@@ -71,17 +68,45 @@ set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "VisionPilot 1.0")
 
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
-    "cuda-toolkit-13-3,
-     libcudnn9-cuda-13,
-     libcublas-13-3,
-     cuda-cudart-13-3,
-     libnvinfer10,
-     libnvinfer-plugin10,
-     libnvonnxparsers10,
-     nvidia-open"
+        "libgstreamer1.0-dev,
+        libgstreamer-plugins-base1.0-dev,
+        libgstreamer-plugins-bad1.0-dev,
+        libsoup2.4-dev,
+        libjson-glib-dev,
+        libopencv-dev"
 )
 
-set(CPACK_SYSTEM_NAME "x86_64")
+if(GPU)
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS
+        "cuda-toolkit-13-3,
+         libcudnn9-cuda-13,
+         libcublas-13-3,
+         cuda-cudart-13-3,
+         libnvinfer10,
+         libnvinfer-plugin10,
+         libnvonnxparsers10,
+         nvidia-open"
+    )
+endif()
+
+# Architecture
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+    set(ARCH_NAME "x86_64")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    set(ARCH_NAME "arm64")
+else()
+    set(ARCH_NAME "${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
+# GPU/CPU support
+if(GPU)
+    set(PKG_SUFFIX "_gpu")
+else()
+    set(PKG_SUFFIX "_cpu")
+endif()
+
+set(CPACK_PACKAGE_NAME "VisionPilot")
+set(CPACK_SYSTEM_NAME "${ARCH_NAME}${PKG_SUFFIX}")
 set(CPACK_GENERATOR   "DEB")
 
 include(CPack)
