@@ -29,15 +29,15 @@
 </div>
 
 ## Free and fully open-source stack for L2 ADAS
+<img src="/Media/hero_GIF.gif" width="100%">
+
 **This codebase contains a productionizable and safety certifiable implementation of an open-source L2 ADAS system called Vision Pilot.**
 
 Vision Pilot is designed to be integrated with automotive OEMs and Tier-1 suppliers in series production passenger cars, and the system can optionally be adopted for transportation and logisitcs use-cases in buses and trucks. 
 
 We offer the complete codebase as free and fully open-source, including AI model weights to help democratize access to this vital technology. Vision Pilot is available under the persmissive Apache 2.0 licence and can freely be used for both commercial and research purposes.
 
-<img src="/Media/hero_GIF.gif" width="100%">
 
-### System Design
 <img src="/Media/VisionPilot.png" width="100%">
 
 Vision Pilot is designed to support basic/entry L2 ADAS features for in-lane autonomous driving including the following features:
@@ -52,7 +52,7 @@ Vision Pilot is designed to support basic/entry L2 ADAS features for in-lane aut
 
 **Sensor specification:**
 
-Vision Pilot can be run with a single, front-facing, monocular camera with 52 - 55 degree horizontal field-of-view, and 2MP resolution.
+Vision Pilot can be run with a single, front-facing, monocular camera with 52 - 55 degree horizontal field-of-view, and 1MP - 2MP resolution.
 
 ### Hybrid End-to-End AI Architecture
 We utilize a **Hybrid End-to-End AI Architecture** as the core of Vision Pilot in which data is processed in parallel by perception AI models for safety, and End-to-End AI models for performance.
