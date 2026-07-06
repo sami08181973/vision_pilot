@@ -242,7 +242,7 @@ static void draw_cipo_boxes(cv::Mat& img, const ProductionView& view) {
     }
 
     // ── Distance label on the closest L1 (most centred) ──────────────────────
-    if (view.cipo.valid && view.cipo.distance_m < kDMax) {
+    if (view.cipo.valid && view.cipo.distance_m > 0.f) {
         const ProductionView::BBox* best = nullptr;
         float best_cx_err = 1e9f;
         for (const auto& d : view.detections) {
