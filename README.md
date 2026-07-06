@@ -29,7 +29,7 @@
 </div>
 
 ## Free and fully open-source stack for L2 ADAS
-[![Watch the Video](/Media/Vision_Pilot_Thumbnail.jpg)](https://drive.google.com/file/d/1nJQ5xLiCqsnPttvqt_wOGcxjFzFIPidl/preview)
+[![Watch the Video](/Media/Vision_Pilot_Thumbnail.jpg)](https://drive.google.com/file/d/1pAxpppljBdDKFYgrKdWiwUtPiEBYbVhL/view)
 
 **This codebase contains a productionizable and safety certifiable implementation of an open-source L2 ADAS system called Vision Pilot.**
 
