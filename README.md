@@ -113,7 +113,7 @@ This will build the project and create VisionPilot executable inside the build d
 
 **OpenLane Dataset:**
 
-To test Vision Pilot using open loop scenario testing, first download the sample data from the [Google Drive]() directory.
+To test Vision Pilot using open loop scenario testing, first download the sample data from the [Google Drive](https://drive.google.com/drive/folders/1-Sxgz3XHzFD6XtETz1sVFRtDKY3W57QB?usp=sharing) directory.
 
 This directory contains video composed of image data from sequences in the appropriate dataset and vehicle speed data 
 extracted from the dataset.
@@ -160,7 +160,7 @@ Reboot the system, cuda dependencies for VisionPilot installed.
 
 **OpenLane Dataset:**
 
-To test Vision Pilot using open loop scenario testing, first download the sample data from the [Google Drive]() directory.
+To test Vision Pilot using open loop scenario testing, first download the sample data from the [Google Drive](https://drive.google.com/drive/folders/1-Sxgz3XHzFD6XtETz1sVFRtDKY3W57QB?usp=sharing) directory.
 
 This directory contains video composed of image data from sequences in the appropriate dataset and vehicle speed data 
 extracted from the dataset.
