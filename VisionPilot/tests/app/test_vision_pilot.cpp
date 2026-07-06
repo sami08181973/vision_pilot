@@ -1,6 +1,14 @@
 // VisionPilot — preprocess → inference → fusion → display
+#include <chrono>
+#include <memory>
+#include <string>
+#include <thread>
+
 #include <config/vision_pilot_config.hpp>
+#include <common/utils.hpp>
 #include <engine/onnx_engine.hpp>
+#include <vehicle_interface/vehicle_interface.hpp>
+#include <vehicle_interface/can_interface.hpp>
 #include <image_preprocessing/image_preprocessor.hpp>
 #include <logging/logger.hpp>
 #include <models/inference.hpp>
@@ -8,14 +16,9 @@
 #include <visualization/visualization.hpp>
 #include <debug/debug_draw.hpp>
 
-#include <camera_interface/frame_source.hpp>
-
-#include <chrono>
-#include <memory>
-#include <string>
-#include <thread>
-#include <vehicle_interface/vehicle_interface.hpp>
-#include <vehicle_interface/can_interface.hpp>
+#include "camera_interface/v4l2_camera_interface.hpp"
+#include "camera_interface/file_interface.hpp"
+#include "vehicle_interface/file_interface.hpp"
 #include <fstream>
 
 #if ENABLE_ROS2_INTERFACE
@@ -72,7 +75,6 @@ int main(int argc, char** argv)
         return 1;
     }
 
-
     // ── CLI flags ─────────────────────────────────────────────────────────────
     bool show_window = true;
     bool debug_viz = false;
@@ -82,14 +84,27 @@ int main(int argc, char** argv)
         if (arg == "--debug-viz") debug_viz = true;
     }
 
+    std::shared_ptr<CameraInterface> camera_interface;
     std::shared_ptr<VehicleInterface> vehicle_interface;
 #ifdef ENABLE_ROS2_INTERFACE
     rclcpp::init(argc, argv);
+    camera_interface = std::make_unique<ROS2ImageSubscriber>(cfg.input_camera_topic);
     vehicle_interface = std::make_shared<VehicleRos2Interface>(cfg.vehicle_speed_topic,
                                                                cfg.vehicle_steering_topic,
                                                                cfg.vehicle_acceleration_topic);
 #else
-    vehicle_interface = std::make_shared<CanInterface>();
+    if (cfg.source.mode == SourceMode::Video)
+    {
+        camera_interface = std::make_unique<camera_interface::FileInterface>(
+            cfg.source.input_video, cfg.source.video_loop, cfg.source.video_realtime);
+        vehicle_interface = std::make_shared<FileInterface>(cfg.source.input_vehicle_speed);
+    }
+    else
+    {
+        camera_interface = std::make_unique<camera_interface::V4L2CameraInterface>(
+            cfg.source.v4l2_device, static_cast<uint32_t>(cfg.source.v4l2_fps));
+        vehicle_interface = std::make_shared<CanInterface>();
+    }
 #endif
 
     ImagePreprocessor preprocessor;
@@ -111,8 +126,8 @@ int main(int argc, char** argv)
     }
 
     // ── Initialize camera interface ───────────────────────────────────────────
-    auto source = camera_interface::open_frame_source(cfg.source);
-    if (!source || !source->is_device_open())
+
+    if (!camera_interface || !camera_interface->is_device_open())
     {
         VP_ERROR("Cannot open frame source");
         return 1;
@@ -124,11 +139,12 @@ int main(int argc, char** argv)
     const cv::Size net_size(vm::AutoDrive::NET_W, vm::AutoDrive::NET_H);
     cv::Mat frame, warped, resized;
     bool h_resized_set = false;
+    cv::Mat H = load_matrix("H.yaml", "H");
     int frame_number = 0;
-    std::vector<double> speeds = readSpeeds("<TEST_VIDEO_PATH>");
+    std::vector<double> speeds = readSpeeds("/data/DEVELOPMENT/AUTONOMOUS/AUTOWARE/TEST/test_open_lane_1/frame_speed.txt");
     while (true)
     {
-        auto [ok, frame] = source->get_latest_frame();
+        auto [ok, frame] = camera_interface->get_latest_frame();
         if (!ok || frame.empty())
         {
             if (cfg.source.mode == SourceMode::Video && !cfg.source.video_loop) break;
@@ -142,7 +158,7 @@ int main(int argc, char** argv)
         // back to world when those networks run on the plain-resized image.
         if (!h_resized_set)
         {
-            pipeline.set_H_resized(preprocessor.C_mat(), frame_size);
+            pipeline.set_H_resized(H, frame_size);
             h_resized_set = true;
         }
 
@@ -165,16 +181,21 @@ int main(int argc, char** argv)
             const double cipo_v = has_cipo ? r->cipo.velocity_ms : cfg.speed_limit;
             const double cipo_dist = r->cipo.distance_m;
 
+            const double raw_cte = r->lateral.path_valid
+                                       ? static_cast<double>(r->lateral.raw_cte_m)
+                                       : cte;
             const Plan plan = planner.compute_plan(
                 cte, epsi, kappa, ego_v, has_cipo, cipo_v, cipo_dist);
 
-            VP_INFO("plan: tyre=%.4f rad  accel=%.3f m/s²  |  cipo=%s  dist=%.1f m  vel=%+.2f m/s  raw=%s",
-                    plan.steering.empty() ? 0.0 : plan.steering[0],
-                    plan.acceleration,
-                    has_cipo ? "true" : "false",
-                    cipo_dist,
-                    r->cipo.velocity_ms,
-                    r->cipo.cipo_raw_found ? "true" : "false");
+            VP_INFO(
+                "plan: tyre=%.4f rad  accel=%.3f m/s²  |  cte=%.2fm(raw=%.2fm)  |  cipo=%s  dist=%.1f m  vel=%+.2f m/s",
+                plan.steering.empty() ? 0.0 : plan.steering[0],
+                plan.acceleration,
+                cte,
+                raw_cte,
+                has_cipo ? "true" : "false",
+                cipo_dist,
+                r->cipo.velocity_ms);
 
             vehicle_interface->write(
                 plan.steering.empty() ? 0.0 : plan.steering[0],
@@ -185,7 +206,7 @@ int main(int argc, char** argv)
                 if (debug_viz)
                     vd::visualize(resized, *r, source_label(cfg.source), cfg.wheel_dir, pipeline.H_world2resized());
                 else
-                    display_frame = visualization.build_frame(resized, *r, plan, ego_v, pipeline.H_resized());
+                    display_frame = visualization.build_frame(resized, *r, plan, ego_v, pipeline.H_resized(), cfg.speed_limit);
             }
         }
         if (cfg.visualization_on)
