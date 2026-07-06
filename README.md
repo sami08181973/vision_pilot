@@ -138,6 +138,25 @@ Run VisionPilot from inside `build` directory
 ```
 ./VisionPilot
 ```
+
+#### Build VisionPilot DEB package
+
+To build Debian DEB package for VisionPilot run 
+
+```bash
+  cpack -G DEB
+```
+To build Debian DEB package for VisionPilot with CPU support build VisionPilot with 
+
+```bash
+  cmake -DONNXRUNTIME_ROOT=<ONNX_RUNTIME_ROOT_PATH> -DGPU=OFF ../
+```
+```bash
+  make
+```
+```bash
+  cpack -G DEB
+```
 </details>
 
 <details>

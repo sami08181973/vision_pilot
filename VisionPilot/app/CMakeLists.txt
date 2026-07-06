@@ -60,9 +60,9 @@ install(FILES ${VISIONPILOT_CONF_FILES}
         DESTINATION share/visionpilot/config/
 )
 
-#install(DIRECTORY "${CMAKE_SOURCE_DIR}/images/"
-#        DESTINATION "share/visionpilot/images"
-#)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/assets/icons/"
+        DESTINATION "/usr/share/visionpilot/assets/icons"
+)
 
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/modules/models/weights/"
         DESTINATION "/usr/share/visionpilot/modules/models/weights"
