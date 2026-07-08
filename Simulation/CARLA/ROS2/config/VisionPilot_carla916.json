@@ -1,7 +1,7 @@
 {
-  "type": "vehicle.lincoln.mkz",
+  "type": "vehicle.lincoln.mkz_2020",
   "id": "hero",
-  "spawn_index": 63,
+  "spawn_index": 100,
   "sensors": [
     {
       "type": "sensor.camera.rgb",
