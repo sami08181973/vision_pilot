@@ -3,8 +3,21 @@ cmake_minimum_required(VERSION 3.22.1)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(IPOPT REQUIRED ipopt)
 
-# eigen-5.0.0
-add_subdirectory(src/eigen-5.0.0 EXCLUDE_FROM_ALL)
+include(FetchContent)
+
+FetchContent_Declare(
+        eigen
+        GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+        GIT_TAG 5.0.0
+        GIT_SHALLOW TRUE
+)
+
+# Skip building tests/docs
+set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
+set(EIGEN_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(EIGEN_BUILD_PKGCONFIG OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(eigen)
 
 add_library(planning
         src/planning.cpp
