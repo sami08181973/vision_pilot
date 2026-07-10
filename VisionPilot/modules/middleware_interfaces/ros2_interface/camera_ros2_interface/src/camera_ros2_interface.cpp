@@ -5,7 +5,7 @@
 #include <thread>
 
 
-ROS2ImageSubscriber::ROS2ImageSubscriber(
+CameraRos2Interface::CameraRos2Interface(
     const std::string& topic_name,
     const std::string& node_name
 ) : topic_name(topic_name)
@@ -56,7 +56,7 @@ ROS2ImageSubscriber::ROS2ImageSubscriber(
 };
 
 
-void ROS2ImageSubscriber::image_callback(
+void CameraRos2Interface::image_callback(
     const sensor_msgs::msg::Image::SharedPtr msg
 )
 {
@@ -108,7 +108,7 @@ void ROS2ImageSubscriber::image_callback(
 };
 
 
-cv::Mat ROS2ImageSubscriber::convert_ros2_image_to_opencv(
+cv::Mat CameraRos2Interface::convert_ros2_image_to_opencv(
     const sensor_msgs::msg::Image::SharedPtr& msg
 )
 {
@@ -119,18 +119,8 @@ cv::Mat ROS2ImageSubscriber::convert_ros2_image_to_opencv(
         // For desired output encoding:
         //      - "bgr8"  : commonly used for color images
         //      - "mono8" : for grayscale
-        cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
+        cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
         return cv_ptr->image;
-    }
-    catch (cv_bridge::Exception& e)
-    {
-        RCLCPP_ERROR(
-            node->get_logger(),
-            "cv_bridge exception: %s, encoding: %s",
-            e.what(),
-            msg->encoding.c_str()
-        );
-        return cv::Mat(); // Return empty mat on error
     }
     catch (const std::exception& e)
     {
@@ -144,7 +134,7 @@ cv::Mat ROS2ImageSubscriber::convert_ros2_image_to_opencv(
 };
 
 
-std::tuple<bool, cv::Mat> ROS2ImageSubscriber::get_latest_frame()
+std::tuple<bool, cv::Mat> CameraRos2Interface::get_latest_frame()
 {
     std::lock_guard<std::mutex> lock(frame_mutex);
 
@@ -166,19 +156,19 @@ std::tuple<bool, cv::Mat> ROS2ImageSubscriber::get_latest_frame()
 
 // Frame access helpers
 
-bool ROS2ImageSubscriber::has_frames() const
+bool CameraRos2Interface::has_frames() const
 {
     std::lock_guard<std::mutex> lock(frame_mutex);
     return has_latest_frame;
 };
 
-bool ROS2ImageSubscriber::is_stream_active() const
+bool CameraRos2Interface::is_stream_active() const
 {
     std::lock_guard<std::mutex> lock(frame_mutex);
     return is_stream_started;
 };
 
-void ROS2ImageSubscriber::clear_frame_buffer()
+void CameraRos2Interface::clear_frame_buffer()
 {
     std::lock_guard<std::mutex> lock(frame_mutex);
 
@@ -188,7 +178,7 @@ void ROS2ImageSubscriber::clear_frame_buffer()
     RCLCPP_INFO(node->get_logger(), "Frame buffer cleared");
 };
 
-std::vector<std::string> ROS2ImageSubscriber::get_overlay() const
+std::vector<std::string> CameraRos2Interface::get_overlay() const
 {
     std::lock_guard<std::mutex> lock(stats_mutex);
 
@@ -202,7 +192,7 @@ std::vector<std::string> ROS2ImageSubscriber::get_overlay() const
     return overlay;
 }
 
-void ROS2ImageSubscriber::reset_stats()
+void CameraRos2Interface::reset_stats()
 {
     std::lock_guard<std::mutex> lock(stats_mutex);
     stats.frames_received = 0;
@@ -212,7 +202,7 @@ void ROS2ImageSubscriber::reset_stats()
 };
 
 
-ROS2ImageSubscriber::~ROS2ImageSubscriber()
+CameraRos2Interface::~CameraRos2Interface()
 {
     // Request node to shutdown
     rclcpp::shutdown();

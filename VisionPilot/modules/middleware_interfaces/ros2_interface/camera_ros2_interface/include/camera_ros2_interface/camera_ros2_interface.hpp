@@ -19,7 +19,7 @@
 
 
 /**
-* @class ROS2ImageSubscriber
+* @class CameraRos2Interface
 * @brief ROS2 node that subscribes to `sensor_msgs/image` topics and
 *        converts ROS2 image message to OpenCV image format (cv::Mat).
 *
@@ -32,7 +32,7 @@
 * - Thread-safe conversion and data handling
 * - Supports various image encodings (RGB, BGR, grayscale, etc.)
 */
-class ROS2ImageSubscriber : public CameraInterface
+class CameraRos2Interface : public CameraInterface
 {
 public:
     /**
@@ -43,7 +43,7 @@ public:
     *
     * Initializes ROS2 (rclcpp::init), creates internal node, subscribes to topic, and starts background spinning.
     */
-    explicit ROS2ImageSubscriber(
+    explicit CameraRos2Interface(
         const std::string& topic_name,
         const std::string& node_name = "ros2_image_subscriber"
     );
@@ -54,7 +54,7 @@ public:
     *
     * Cleans up ROS2 subscriptions, shuts down spinning thread, and shutdowns rclcpp.
     */
-    ~ROS2ImageSubscriber();
+    ~CameraRos2Interface();
 
 
     // FRAME HANDLINGS
