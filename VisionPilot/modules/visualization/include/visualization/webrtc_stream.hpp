@@ -26,7 +26,7 @@ namespace visualization {
             * - frame_rate: desired streaming frame rate in FPS (default: 10.0 FPS)
             */
             struct Config {
-                std::string host = "127.0.0.1"; // Default to IPv4 localhost
+                std::string host = "0.0.0.0"; // Default to IPv4 localhost
                 uint16_t port = 8080;
                 std::string websocket_path = "/ws";
                 double frame_rate = 10.0;       // Default to 10 FPS
@@ -81,7 +81,7 @@ namespace visualization {
             *
             * @return true if streaming started successfully, false otherwise
             */
-            bool start();
+            bool start() const;
 
 
             /**

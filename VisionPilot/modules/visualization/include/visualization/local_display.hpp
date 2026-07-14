@@ -12,6 +12,7 @@ namespace visualization
         ~LocalDisplay();
 
         bool render_frame(const cv::Mat& display_frame) override;
+        bool stop() override;
     };
 }
 

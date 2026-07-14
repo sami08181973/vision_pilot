@@ -608,8 +608,9 @@ bool show_frame(const cv::Mat& frame, const std::string& window_name) {
     return true;
 }
 
-void close_windows() {
-    cv::destroyAllWindows();
+bool Visualization::stop() const {
+    return visual_interface->stop();
+    // cv::destroyAllWindows();
 }
 
 Visualization::Visualization(Config cfg)

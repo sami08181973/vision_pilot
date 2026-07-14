@@ -97,6 +97,16 @@ if ! docker image inspect "$TAG" >/dev/null 2>&1; then
     exit 1
 fi
 
+if [ ! -d "../config" ]; then
+    echo "Error: ../config directory not found." >&2
+    exit 1
+fi
+CONFIG_DIR="$(cd ../config && pwd)"
+
+is_valid_port() {
+    [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -ge 1 ] && [ "$1" -le 65535 ]
+}
+
 DOCKER_ARGS=(--rm -it)
 
 if [ "$VARIANT" = "gpu" ]; then
@@ -130,6 +140,18 @@ DOCKER_ARGS+=(-v "$(cd ../config && pwd)/vision_pilot.conf:/usr/share/visionpilo
 DOCKER_ARGS+=(-v "$(cd ../config && pwd)/vision_pilot_test.conf:/usr/share/visionpilot/config/vision_pilot_test.conf:ro")
 if [ "$ENABLE_ROS2" = "ON" ]; then
     DOCKER_ARGS+=(-v "$(cd ../config && pwd)/vision_pilot_ros2.conf:/usr/share/visionpilot/config/vision_pilot_ros2.conf:ro")
+fi
+
+VISION_PILOT_CONF="${CONFIG_DIR}/vision_pilot.conf"
+WEBRTC_ON="$(awk -F= '/^[[:space:]]*webrtc_on[[:space:]]*=/ {gsub(/[[:space:]]/,"",$2); print tolower($2)}' "$VISION_PILOT_CONF")"
+WEBRTC_PORT="$(awk -F= '/^[[:space:]]*webrtc_port[[:space:]]*=/ {gsub(/[[:space:]]/,"",$2); print $2}' "$VISION_PILOT_CONF")"
+
+if [ "$WEBRTC_ON" = "true" ]; then
+    if ! is_valid_port "$WEBRTC_PORT"; then
+        echo "Error: webrtc_on = true in $VISION_PILOT_CONF, but webrtc_port ('$WEBRTC_PORT') is missing or invalid (expected 1-65535)." >&2
+        exit 1
+    fi
+    DOCKER_ARGS+=(-p "${WEBRTC_PORT}:${WEBRTC_PORT}")
 fi
 
 if [ -n "$V4L2" ]; then

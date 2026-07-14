@@ -3,19 +3,23 @@ cmake_minimum_required(VERSION 3.22.1)
 find_package(OpenCV REQUIRED)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(Boost 1.70 REQUIRED COMPONENTS system)
+
 pkg_check_modules(WEBCONN IMPORTED_TARGET
         gstreamer-1.0
         gstreamer-app-1.0
         gstreamer-sdp-1.0
         gstreamer-webrtc-1.0
-        libsoup-2.4
-        json-glib-1.0
 )
 
-if (WEBCONN_FOUND)
+find_path(NLOHMANN_JSON_INCLUDE_DIR nlohmann/json.hpp)
+
+if (WEBCONN_FOUND AND Boost_FOUND AND NLOHMANN_JSON_INCLUDE_DIR)
+    set(WEBRTC_DEPS_FOUND TRUE)
     list(APPEND VIS_SOURCES src/webrtc_stream.cpp)
 else ()
-    message(WARNING "ENABLE_WEBRTC=ON but GStreamer WebRTC packages not found; building without WebRTC")
+    set(WEBRTC_DEPS_FOUND FALSE)
+    message(WARNING "ENABLE_WEBRTC=ON but required WebRTC dependencies not found; building without WebRTC")
 endif ()
 
 
@@ -27,9 +31,18 @@ add_library(visualization
         ${VIS_SOURCES}
 )
 
-if (WEBCONN_FOUND)
+if (WEBRTC_DEPS_FOUND)
     target_compile_definitions(visualization PUBLIC ENABLE_WEBRTC=1 PRIVATE GST_USE_UNSTABLE_API=1)
-    target_link_libraries(visualization PUBLIC PkgConfig::WEBCONN)
+    target_include_directories(visualization PRIVATE
+            ${Boost_INCLUDE_DIRS}
+            ${NLOHMANN_JSON_INCLUDE_DIR}
+    )
+    target_link_libraries(visualization
+            PUBLIC
+            PkgConfig::WEBCONN
+            PRIVATE
+            Boost::system
+    )
 endif ()
 
 target_include_directories(visualization

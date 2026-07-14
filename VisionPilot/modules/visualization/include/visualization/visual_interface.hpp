@@ -9,6 +9,7 @@ public:
     virtual ~VisualInterface() = default;
 
     virtual bool render_frame(const cv::Mat& display_frame) = 0;
+    virtual bool stop() = 0;
 };
 
 #endif //VISIONPILOT_VISUAL_INTERFACE_HPP

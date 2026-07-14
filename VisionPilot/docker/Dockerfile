@@ -28,8 +28,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libgstreamer1.0-dev \
         libgstreamer-plugins-base1.0-dev \
         libgstreamer-plugins-bad1.0-dev \
-        libsoup2.4-dev \
-        libjson-glib-dev \
+        gstreamer1.0-plugins-base \
+        gstreamer1.0-plugins-good \
+        gstreamer1.0-plugins-bad \
+        gstreamer1.0-plugins-ugly \
+        gstreamer1.0-nice \
+        libnice-dev \
+        libsrtp2-dev \
+        libboost-system-dev \
+        nlohmann-json3-dev \
         coinor-libipopt-dev \
         libcppad-dev \
         liblapack-dev \
@@ -104,8 +111,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libgstreamer1.0-0 \
         libgstreamer-plugins-base1.0-0 \
         libgstreamer-plugins-bad1.0-0 \
-        libsoup2.4-1 \
-        libjson-glib-1.0-0 \
+        gstreamer1.0-plugins-base \
+        gstreamer1.0-plugins-good \
+        gstreamer1.0-plugins-bad \
+        gstreamer1.0-plugins-ugly \
+        gstreamer1.0-nice \
+        libnice10 \
+        libsrtp2-1 \
+        libboost-system1.83.0 \
         libcudnn9-cuda-13 \
         libnvinfer10 \
         libnvinfer-plugin10 \

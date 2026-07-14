@@ -21,4 +21,10 @@ namespace visualization
         cv::waitKey(1);
         return true;
     }
+
+    bool LocalDisplay::stop()
+    {
+        cv::destroyAllWindows();
+        return true;
+    }
 }

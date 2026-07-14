@@ -91,7 +91,6 @@ bool show_frame(
     const cv::Mat& frame,
     const std::string& window_name = "VisionPilot");
 
-void close_windows();
 
 class Visualization
 {
@@ -107,6 +106,7 @@ public:
         const cv::Mat& H_resized,
         double speed_limit_ms = 0.0);
     bool render_frame(const cv::Mat& display_frame);
+    bool stop() const;
 };
 
 }  // namespace visualization
