@@ -4,18 +4,6 @@ The script **calc_front_camera_homography.py** provides a highly robust, automat
 
 By leveraging exactly **four 2x2 ground-plane checkerboard markers**, the script automatically detects calibration target intersections with sub-pixel accuracy, structures them relative to physical coordinates, solves the homography system, and outputs a visual validation grid backprojected directly onto your camera frame.
 
----
-
-## Table of Contents
-1. [Physical Calibration Setup](#1-physical-calibration-setup)
-2. [How the Script Works](#2-how-the-script-works)
-3. [Prerequisites & Installation](#3-prerequisites--installation)
-4. [Command Line Usage](#4-command-line-usage)
-5. [Understanding the Output & Visualization](#5-understanding-the-output--visualization)
-6. [Troubleshooting & Best Practices](#6-troubleshooting--best-practices)
-
----
-
 ## 1. Physical Calibration Setup
 
 To establish a highly precise mapping from pixels to physical road coordinates, you must place four **2x2 black-and-white checkerboard targets** flat on the asphalt surface. 
@@ -74,3 +62,53 @@ The pipeline executes through five distinct stages:
 
 ---
 
+## 3. Run the script
+
+Execute the script by feeding it your captured camera frame along with the physical coordinates measured from your real-world marker grid, an example is shown below - ensure to save your H-matrix in the [VisionPilot/config](../VisionPilot/config/) folder
+
+```bash
+python calc_homography_2x2.py --img road_frame.jpg \
+  --out ../VisionPilot/config/H_custom.yaml \
+  --tl 0.0 15.0 \
+  --tr 3.7 15.0 \
+  --bl 0.0 0.0 \
+  --br 3.7 0.0
+```
+
+### Commandline Arguments
+- **--img** - Path to the captured source calibration image file.
+- **--out** - Target file path where the evaluated Homography matrix should be saved.
+- **--tl** - Top-Left Marker World Coordinates: X (depth), Y (horizontal offset).
+- **--tr** - Top-Right Marker World Coordinates: X (depth), Y (horizontal offset).
+- **--bl** - Bottom-Left Marker World Coordinates: X (depth), Y (horizontal offset).
+- **--br** - Bottom-Right Marker World Coordinates: X (depth), Y (horizontal offset).
+
+---
+
+### File Output (H.yaml)
+The Homography matrix is saved and can be used by Vision Pilot
+
+### Visualization Output
+The script automatically produces an overlay visualization image saved as <your_out_name>_visualization.png.
+
+**Green Lines:** Represent a uniform physical grid drawn on the road floor, projected back into perspective. If your calibration is accurate, these lines will align perfectly parallel to existing road lines, and compress correctly as they approach the horizon.
+
+**Red Circles:** Indicate the identified centers of your checkerboards, printed with text labels (Top-Left, Top-Right, etc.) confirming the correct identification pairing
+
+---
+
+### Troubleshooting & Best Practices
+
+#### No Corners Found:
+
+Ensure high-contrast illumination on the road. Shadows cast directly across a checkerboard can cause corner detection to fail.
+
+Adjust cv2.findChessboardCorners flags if you have reflective pavement.
+
+### Extreme Camera Tilts:
+
+Spatial sorting assumes the camera has minimal roll. If the camera is tilted sideways by more than 45 degrees, the vertical separation logic may mix up the left-right pairing. Keep the camera level during calibration.
+
+### Lines Distorting Into Sky (Horizon Errors):
+
+Straight lines projected past the horizon line can mathematically "wrap around" and render incorrectly. The code utilizes a custom perspective-depth filter (homog_img[:, 2] > 1e-5) to clip segments extending into infinite space safely.
