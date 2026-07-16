@@ -96,8 +96,9 @@ RUN mkdir build && cd build \
     && if [ "$ENABLE_ROS2" = "ON" ]; then . /opt/ros/jazzy/setup.bash; fi \
     && cmake -DONNXRUNTIME_ROOT=/usr/share/visionpilot/onnxruntime -DGPU=OFF \
              -DENABLE_ROS2_INTERFACE=${ENABLE_ROS2} \
-             -DCMAKE_CXX_STANDARD_LIBRARIES="-lcppad_lib" .. \
-    && make -j"$(nproc)" VisionPilot
+             -DCMAKE_CXX_STANDARD_LIBRARIES="-lcppad_lib" \
+             -DVP_ENABLE_SIMD=ON -DVP_NATIVE_ARCH=ON .. \
+    && make -j"$(nproc)" VisionPilot vp_perf_bench
 
 # runtime
 FROM ubuntu:${UBUNTU_VERSION} AS runtime
@@ -132,6 +133,7 @@ RUN mkdir -p /usr/share/visionpilot
 COPY --from=builder /usr/share/visionpilot/onnxruntime /usr/share/visionpilot/onnxruntime
 
 COPY --from=builder /opt/visionpilot/build/VisionPilot /usr/bin/VisionPilot
+COPY --from=builder /opt/visionpilot/build/vp_perf_bench /usr/bin/vp_perf_bench
 COPY --from=builder /opt/visionpilot/build/config /usr/share/visionpilot/config
 COPY --from=builder /opt/visionpilot/assets/icons /usr/share/visionpilot/assets/icons
 COPY --from=builder /opt/visionpilot/modules/models/weights /usr/share/visionpilot/modules/models/weights

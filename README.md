@@ -284,6 +284,28 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [platforms/README.md](platforms
 - Terraform (AWS / GCP / Azure)
 - Raspberry Pi 5, QNX SDP, Zephyr (STM32 / NXP / TI), ESP32, Arduino vehicle gateways
 
+### Complete L2 source map
+
+All implementation paths for running L2 ADAS (features, AI, sensing, fusion, planning, demo, MCU, cloud):
+
+**[docs/L2_ADAS_SOURCE_MAP.md](docs/L2_ADAS_SOURCE_MAP.md)**
+
+### DSP/SIMD performance + chipset comparison
+
+Optimized CHW convert (SSE2/AVX2/NEON), aligned memory arenas, micro-bench, and chipset matrix (NVIDIA / Qualcomm / TI C66x / …):
+
+```bat
+run_perf_bench.bat
+```
+
+**[docs/BENCHMARK_CHIPSET_COMPARISON.md](docs/BENCHMARK_CHIPSET_COMPARISON.md)**
+
+### Business proposal dashboard (HTML)
+
+Customer-facing evaluation dashboard with ADAS results, SIMD gains, and silicon fit:
+
+**[docs/proposal/vision_pilot_business_dashboard.html](docs/proposal/vision_pilot_business_dashboard.html)**
+
 ### Virtual hardware demo (no physical camera / MCU)
 
 Double-click or run (fully automated — build, synthetic camera, virtual ECU, ADAS report):

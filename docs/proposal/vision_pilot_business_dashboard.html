@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Embedded AI Design Labs — Vision Pilot L2 ADAS Proposal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- High-readability pair: Source Sans 3 (UI) + Source Serif 4 (headings) -->
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #121820;
+      --ink-soft: #243040;
+      --paper: #f7f5f1;
+      --paper-2: #efece6;
+      --card: #ffffff;
+      --line: #d8d2c8;
+      --muted: #5c6670;
+      --teal: #0b6e64;
+      --teal-2: #128f82;
+      --amber: #b86a1a;
+      --shadow: 0 18px 48px rgba(18, 24, 32, 0.10);
+      --radius: 16px;
+      --space: 1.25rem;
+      --space-lg: 2rem;
+      --space-xl: 3rem;
+      --max: 1120px;
+      --leading: 1.65;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "Source Sans 3", "Segoe UI", sans-serif;
+      font-size: 17px;
+      line-height: var(--leading);
+      color: var(--ink);
+      background:
+        radial-gradient(900px 420px at 0% 0%, rgba(18, 143, 130, 0.10), transparent 60%),
+        radial-gradient(700px 380px at 100% 8%, rgba(184, 106, 26, 0.08), transparent 55%),
+        linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3 {
+      font-family: "Source Serif 4", Georgia, serif;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      line-height: 1.25;
+      color: var(--ink);
+    }
+
+    a { color: var(--teal); }
+    a:hover { color: var(--teal-2); }
+
+    .wrap {
+      width: min(var(--max), calc(100% - 2.5rem));
+      margin: 0 auto;
+      padding: var(--space-lg) 0 4rem;
+    }
+
+    /* Top bar */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: var(--space);
+      padding: 0.35rem 0 1rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .company-mark {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .company-mark strong {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .company-mark span {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .top-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .top-links a { text-decoration: none; }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(145deg, #121820 0%, #1a2a30 58%, #0b6e64 130%);
+      color: #f3f0ea;
+      border-radius: 22px;
+      padding: clamp(1.75rem, 4vw, 3rem);
+      box-shadow: var(--shadow);
+      margin-bottom: var(--space-xl);
+    }
+
+    .hero .eyebrow {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(243, 240, 234, 0.7);
+      margin-bottom: 0.85rem;
+    }
+
+    .hero h1 {
+      color: #fff;
+      font-size: clamp(2rem, 4.5vw, 3.15rem);
+      max-width: 18ch;
+      margin-bottom: 0.85rem;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      color: #8fd9cf;
+      font-weight: 500;
+    }
+
+    .hero .lead {
+      max-width: 40rem;
+      font-size: 1.08rem;
+      line-height: 1.7;
+      color: rgba(243, 240, 234, 0.88);
+      margin-bottom: 1.5rem;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      min-height: 48px;
+      padding: 0.7rem 1.35rem;
+      border-radius: 10px;
+      font: inherit;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+
+    .btn-primary {
+      background: #8fd9cf;
+      color: #102018;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #f3f0ea;
+      border-color: rgba(243, 240, 234, 0.35);
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid rgba(243, 240, 234, 0.18);
+    }
+
+    .hero-stats strong {
+      display: block;
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: 0.25rem;
+    }
+
+    .hero-stats span {
+      font-size: 0.92rem;
+      color: rgba(243, 240, 234, 0.68);
+      line-height: 1.4;
+    }
+
+    /* Sections */
+    section {
+      margin-bottom: var(--space-xl);
+    }
+
+    .section-head {
+      margin-bottom: 1.15rem;
+      max-width: 46rem;
+    }
+
+    .section-head h2 {
+      font-size: clamp(1.55rem, 2.6vw, 2rem);
+      margin-bottom: 0.45rem;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 1.02rem;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: clamp(1.25rem, 2.5vw, 1.75rem);
+      box-shadow: 0 8px 28px rgba(18, 24, 32, 0.04);
+    }
+
+    /* Engagement offers */
+    .offers {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .offer {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.35rem 1.25rem;
+      background: linear-gradient(180deg, #fff 0%, #faf8f4 100%);
+      height: 100%;
+    }
+
+    .offer .label {
+      display: inline-block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 0.65rem;
+    }
+
+    .offer h3 {
+      font-size: 1.28rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .offer p {
+      color: var(--muted);
+      font-size: 0.98rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .offer ul {
+      padding-left: 1.15rem;
+      color: var(--ink-soft);
+      font-size: 0.96rem;
+    }
+
+    .offer li { margin: 0.35rem 0; }
+
+    /* Platforms */
+    .platforms {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-top: 1rem;
+    }
+
+    .chip {
+      background: #e7f4f2;
+      color: var(--teal);
+      border: 1px solid #c5e4df;
+      border-radius: 999px;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    /* Expertise */
+    .expertise {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 1rem;
+    }
+
+    .expertise article h3 {
+      font-size: 1.2rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .expertise article p,
+    .expertise article li {
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .expertise ul {
+      padding-left: 1.2rem;
+      margin-top: 0.75rem;
+    }
+
+    .expertise li { margin: 0.45rem 0; }
+
+    /* Features */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.6rem;
+    }
+
+    .feat {
+      text-align: center;
+      padding: 1rem 0.5rem;
+      border-radius: 12px;
+      background: var(--ink);
+      color: #f3f0ea;
+    }
+
+    .feat b {
+      display: block;
+      color: #8fd9cf;
+      font-size: 1.05rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .feat span {
+      font-size: 0.82rem;
+      color: rgba(243, 240, 234, 0.72);
+      line-height: 1.35;
+    }
+
+    /* Metrics */
+    .metrics {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 1rem;
+    }
+
+    .bars { display: grid; gap: 0.9rem; }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 92px 1fr 42px;
+      gap: 0.75rem;
+      align-items: center;
+      font-size: 0.98rem;
+    }
+
+    .bar-track {
+      height: 11px;
+      background: #ece7df;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: var(--w);
+      background: linear-gradient(90deg, var(--teal), var(--teal-2));
+      border-radius: inherit;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem;
+      background: #faf8f4;
+    }
+
+    .kpi .num {
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--teal);
+      line-height: 1.1;
+    }
+
+    .kpi .lbl {
+      margin-top: 0.4rem;
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* Perf */
+    .compare {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .compare article {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.25rem;
+      background: #fff;
+    }
+
+    .compare article.hl {
+      background: linear-gradient(160deg, #121820, #163832);
+      color: #f3f0ea;
+      border-color: transparent;
+    }
+
+    .compare .tag {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.45rem;
+    }
+
+    .compare article.hl .tag { color: rgba(243, 240, 234, 0.65); }
+
+    .compare .big {
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: 2.35rem;
+      font-weight: 600;
+      line-height: 1.15;
+      margin-bottom: 0.45rem;
+    }
+
+    .compare article.hl .big { color: #8fd9cf; }
+
+    .compare p {
+      font-size: 0.98rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .compare article.hl p { color: rgba(243, 240, 234, 0.78); }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.96rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.9rem 0.7rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.78rem;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-m { background: #e5f3f1; color: var(--teal); }
+    .badge-r { background: #f7e9d8; color: var(--amber); }
+    .badge-n { background: #eceff1; color: var(--muted); }
+
+    /* Contact + map */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 1rem;
+    }
+
+    .contact-list {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .contact-item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      background: #faf8f4;
+    }
+
+    .contact-item h3 {
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: "Source Sans 3", sans-serif;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    .contact-item p,
+    .contact-item a {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--ink);
+      text-decoration: none;
+      line-height: 1.5;
+    }
+
+    .contact-item a:hover { color: var(--teal); }
+
+    .map-frame {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      min-height: 340px;
+      background: #e8e4dc;
+    }
+
+    .map-frame iframe {
+      width: 100%;
+      height: 340px;
+      border: 0;
+      display: block;
+    }
+
+    .map-caption {
+      margin-top: 0.65rem;
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    /* Footer */
+    .site-footer {
+      margin-top: 0.5rem;
+      padding: 1.5rem 0 0;
+      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 0.65rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .site-footer strong { color: var(--ink); }
+
+    @media (max-width: 960px) {
+      .hero-stats,
+      .offers,
+      .expertise,
+      .metrics,
+      .compare,
+      .contact-grid { grid-template-columns: 1fr 1fr; }
+      .features { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    @media (max-width: 640px) {
+      .wrap { width: min(var(--max), calc(100% - 1.25rem)); }
+      .hero-stats,
+      .offers,
+      .expertise,
+      .metrics,
+      .compare,
+      .contact-grid,
+      .kpi-grid,
+      .features { grid-template-columns: 1fr; }
+      .features { grid-template-columns: 1fr 1fr; }
+      .bar-row { grid-template-columns: 80px 1fr 36px; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .btn { display: none; }
+      .hero, .panel { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="topbar">
+      <div class="company-mark">
+        <strong>Embedded AI Design Labs Pvt Ltd</strong>
+        <span>Edge AI · ADAS · Silicon-aware optimization</span>
+      </div>
+      <div class="top-links">
+        <a href="#engagement">Engagement models</a>
+        <a href="#expertise">Why us</a>
+        <a href="#results">Results</a>
+        <a href="#contact">Contact</a>
+      </div>
+    </div>
+
+    <header class="hero">
+      <div class="eyebrow">Business proposal · Vision Pilot L2 ADAS evaluation</div>
+      <h1>Open L2 ADAS, <em>tuned</em> for your silicon</h1>
+      <p class="lead">
+        Embedded AI Design Labs Pvt Ltd helps OEMs and Tier-1s move from open-source Vision Pilot
+        to a customized pilot or prototype on the hardware you already use — GPU, NPU, DSP, SIMD,
+        ARM, and multicore platforms — with measurable latency and memory gains.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#engagement">Request a pilot / prototype</a>
+        <a class="btn btn-secondary" href="#contact">Talk to our team</a>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <strong>L2 suite</strong>
+          <span>ACC · FCW · AEB · LKAS · LDW · ISA · Autopilot</span>
+        </div>
+        <div>
+          <strong>~15×</strong>
+          <span>Faster CHW preprocess vs OpenCV legacy path</span>
+        </div>
+        <div>
+          <strong>Multi-silicon</strong>
+          <span>NVIDIA · Qualcomm · TI · ARM · MCU gateways</span>
+        </div>
+        <div>
+          <strong>Apache 2.0</strong>
+          <span>Commercial-ready Vision Pilot base</span>
+        </div>
+      </div>
+    </header>
+
+    <section id="engagement">
+      <div class="section-head">
+        <h2>How we engage with your team</h2>
+        <p>
+          Clear pathways from first workshop to a running prototype on your target hardware —
+          not a one-size-fits-all demo.
+        </p>
+      </div>
+      <div class="offers">
+        <article class="offer">
+          <div class="label">Option A</div>
+          <h3>Customization</h3>
+          <p>Adapt Vision Pilot to your vehicle interfaces, camera FOV, and production constraints.</p>
+          <ul>
+            <li>Camera / RADAR / CAN / gateway integration</li>
+            <li>Config, calibration, and ODD alignment</li>
+            <li>CI, Docker, and cloud artifact pipelines</li>
+          </ul>
+        </article>
+        <article class="offer">
+          <div class="label">Option B</div>
+          <h3>Pilot program</h3>
+          <p>Time-boxed evaluation on your chosen SoC with KPIs for latency, CPU/NPU load, and memory.</p>
+          <ul>
+            <li>Virtual + on-target bring-up</li>
+            <li>Feature coverage report (ACC → Autopilot)</li>
+            <li>Joint review with OEM / Tier-1 stakeholders</li>
+          </ul>
+        </article>
+        <article class="offer">
+          <div class="label">Option C</div>
+          <h3>Prototype development</h3>
+          <p>Hardware-specific optimization and packaging for series-intent prototypes.</p>
+          <ul>
+            <li>GPU / NPU / DSP / SIMD kernels</li>
+            <li>ARM &amp; multicore scheduling</li>
+            <li>Memory map: on-chip, DDR, NOR/NAND</li>
+          </ul>
+        </article>
+      </div>
+      <div class="panel" style="margin-top:1rem">
+        <h3 style="font-size:1.15rem;margin-bottom:0.65rem">Target platforms we optimize for</h3>
+        <p style="color:var(--muted);margin-bottom:0.35rem">
+          Tell us your board or SoC — we map Vision Pilot’s hybrid E2E stack and safety guardian
+          to the right execution units.
+        </p>
+        <div class="platforms">
+          <span class="chip">GPU (CUDA / TensorRT)</span>
+          <span class="chip">NPU / HTP / DLA / TIDL</span>
+          <span class="chip">DSP (TI C7x / C66x)</span>
+          <span class="chip">SIMD (AVX2 / NEON / HVX)</span>
+          <span class="chip">ARM Cortex-A / R</span>
+          <span class="chip">Multicore SoCs</span>
+          <span class="chip">QNX SDP hosts</span>
+          <span class="chip">MCU gateways (ESP32 / STM32 / NXP / Zephyr)</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="expertise">
+      <div class="section-head">
+        <h2>Why Embedded AI Design Labs</h2>
+        <p>
+          Strong hands-on expertise in embedded AI optimization across heterogeneous chipsets —
+          from host CPUs to automotive NPUs and classic DSPs.
+        </p>
+      </div>
+      <div class="expertise">
+        <article class="panel">
+          <h3>Optimization DNA</h3>
+          <p>
+            We specialize in squeezing real-time vision and control pipelines into constrained
+            silicon: cache-aware data layouts, aligned memory arenas, SIMD/DSP kernels, and
+            accelerator offload (GPU/NPU) without losing functional safety thinking.
+          </p>
+          <ul>
+            <li>Latency reduction on preprocess and inference paths</li>
+            <li>Memory hierarchy planning (L1/L2, on-chip SRAM, DDR, flash)</li>
+            <li>Porting guides for NVIDIA, Qualcomm, TI, ARM multicore, and MCU bridges</li>
+            <li>Benchmark-driven acceptance criteria for every pilot</li>
+          </ul>
+        </article>
+        <article class="panel">
+          <h3>What you get in a proposal cycle</h3>
+          <ul>
+            <li>Readable evaluation dashboard (this brief)</li>
+            <li>Measured baseline on CPU + virtual ECU</li>
+            <li>Chipset fit matrix for your shortlist</li>
+            <li>Recommended engagement: customize, pilot, or prototype</li>
+            <li>Path toward ISO 26262 / ISO 8800 discussions</li>
+          </ul>
+          <div class="platforms" style="margin-top:1rem">
+            <span class="chip">Open-source friendly</span>
+            <span class="chip">OEM / Tier-1 ready</span>
+            <span class="chip">India R&amp;D delivery</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>L2 feature coverage</h2>
+        <p>Mapless monocular stack — single front camera, 52–55° HFOV, 1–2 MP class sensors.</p>
+      </div>
+      <div class="features">
+        <div class="feat"><b>ACC</b><span>Adaptive cruise</span></div>
+        <div class="feat"><b>FCW</b><span>Collision warning</span></div>
+        <div class="feat"><b>AEB</b><span>Emergency brake</span></div>
+        <div class="feat"><b>LKAS</b><span>Lane keep</span></div>
+        <div class="feat"><b>LDW</b><span>Lane departure</span></div>
+        <div class="feat"><b>ISA</b><span>Speed assist</span></div>
+        <div class="feat"><b>Autopilot</b><span>Single-lane</span></div>
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="section-head">
+        <h2>Evaluation results snapshot</h2>
+        <p>Virtual camera + virtual ECU demo on CPU Docker — measured July 2026.</p>
+      </div>
+      <div class="metrics">
+        <div class="panel">
+          <h3 style="font-family:'Source Sans 3',sans-serif;font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">ADAS activation (frames ON)</h3>
+          <div class="bars">
+            <div class="bar-row"><span>ACC</span><div class="bar-track"><div class="bar-fill" style="--w:100%"></div></div><strong>89</strong></div>
+            <div class="bar-row"><span>AEB</span><div class="bar-track"><div class="bar-fill" style="--w:74%"></div></div><strong>66</strong></div>
+            <div class="bar-row"><span>LKAS</span><div class="bar-track"><div class="bar-fill" style="--w:100%"></div></div><strong>89</strong></div>
+            <div class="bar-row"><span>LDW</span><div class="bar-track"><div class="bar-fill" style="--w:100%"></div></div><strong>89</strong></div>
+            <div class="bar-row"><span>Autopilot</span><div class="bar-track"><div class="bar-fill" style="--w:100%"></div></div><strong>89</strong></div>
+            <div class="bar-row"><span>CIPO</span><div class="bar-track"><div class="bar-fill" style="--w:74%"></div></div><strong>66</strong></div>
+          </div>
+          <p style="margin-top:1rem;color:var(--muted);font-size:0.95rem">
+            89 planner cycles · 1,985 virtual ECU CMDs · ISA within limit (0 OVER) ·
+            FCW=0 while hard AEB band active.
+          </p>
+        </div>
+        <div class="panel">
+          <h3 style="font-family:'Source Sans 3',sans-serif;font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Delivery KPIs</h3>
+          <div class="kpi-grid">
+            <div class="kpi"><div class="num">15×</div><div class="lbl">CHW convert vs OpenCV legacy</div></div>
+            <div class="kpi"><div class="num">1.25 ms</div><div class="lbl">Optimized CHW avg latency</div></div>
+            <div class="kpi"><div class="num">6 MB</div><div class="lbl">Aligned CHW arena (float32)</div></div>
+            <div class="kpi"><div class="num">3</div><div class="lbl">E2E models: Drive / Steer / Speed</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>Performance story for stakeholders</h2>
+        <p>DSP/SIMD path cuts packing latency; full E2E on GPU/NPU is the series target.</p>
+      </div>
+      <div class="compare">
+        <article>
+          <div class="tag">Before</div>
+          <div class="big">18.9 ms</div>
+          <p>OpenCV color convert + split path for ImageNet CHW tensors.</p>
+        </article>
+        <article class="hl">
+          <div class="tag">After · Embedded AI Labs optimization</div>
+          <div class="big">~15×</div>
+          <p>SIMD/DSP-aware CHW kernels with 64-byte aligned memory — ready to port further to NEON, HVX, C7x.</p>
+        </article>
+        <article>
+          <div class="tag">Next step on your SoC</div>
+          <div class="big">GPU / NPU</div>
+          <p>Move AutoDrive / AutoSteer / AutoSpeed to TensorRT, HTP, or TIDL for automotive-class FPS.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>Silicon fit (discussion matrix)</h2>
+        <p>Measured baseline vs reference automotive platforms for joint planning.</p>
+      </div>
+      <div class="panel table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Platform</th>
+              <th>Evidence</th>
+              <th>Accel path</th>
+              <th>E2E latency (order)</th>
+              <th>Our role</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>x86_64 + ORT CPU</td>
+              <td><span class="badge badge-m">Measured</span></td>
+              <td>SSE2 / AVX2</td>
+              <td>650–900 ms</td>
+              <td>Baseline demo &amp; CI</td>
+            </tr>
+            <tr>
+              <td>NVIDIA Orin / DRIVE</td>
+              <td><span class="badge badge-r">Reference</span></td>
+              <td>CUDA / TensorRT / DLA</td>
+              <td>~10–40 ms</td>
+              <td>GPU/NPU prototype</td>
+            </tr>
+            <tr>
+              <td>Qualcomm Ride / SA8295</td>
+              <td><span class="badge badge-r">Reference</span></td>
+              <td>NEON + Hexagon HTP</td>
+              <td>~15–40 ms</td>
+              <td>NPU + HVX tuning</td>
+            </tr>
+            <tr>
+              <td>TI TDA4VM / C7x</td>
+              <td><span class="badge badge-r">Reference</span></td>
+              <td>C7x SIMD + TIDL</td>
+              <td>~20–50 ms</td>
+              <td>DSP/MMA bring-up</td>
+            </tr>
+            <tr>
+              <td>TI C66x</td>
+              <td><span class="badge badge-r">Reference</span></td>
+              <td>C66x SIMD</td>
+              <td>Front-end / legacy DSP</td>
+              <td>Preprocess / sensor DSP</td>
+            </tr>
+            <tr>
+              <td>ARM multicore (e.g. RPi5)</td>
+              <td><span class="badge badge-r">Reference</span></td>
+              <td>NEON</td>
+              <td>~1–3 s FP32 CPU</td>
+              <td>Low-cost pilot host</td>
+            </tr>
+            <tr>
+              <td>ESP32 / STM32 / NXP / Zephyr</td>
+              <td><span class="badge badge-n">Gateway</span></td>
+              <td>MCU</td>
+              <td>I/O path</td>
+              <td>SPEED / CMD vehicle bridge</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="contact">
+      <div class="section-head">
+        <h2>Contact Embedded AI Design Labs Pvt Ltd</h2>
+        <p>Reach us for customization, pilot, or prototype scoping on your hardware.</p>
+      </div>
+      <div class="contact-grid">
+        <div class="contact-list">
+          <div class="contact-item">
+            <h3>Email</h3>
+            <p><a href="mailto:info@embedailabs.com">info@embedailabs.com</a></p>
+          </div>
+          <div class="contact-item">
+            <h3>Mobile / phone</h3>
+            <p><a href="tel:+919611748385">+91 96117 48385</a></p>
+            <p style="margin-top:0.35rem"><a href="tel:+919732786122">+91 97327 86122</a></p>
+            <p style="margin-top:0.35rem;font-weight:500;color:var(--muted);font-size:0.95rem">Mon–Sat · 10:00–18:30 IST</p>
+          </div>
+          <div class="contact-item">
+            <h3>Registered / delivery office</h3>
+            <p>
+              Embedded AI Design Labs Pvt Ltd<br />
+              Elite Co-Works, 5A, 1A Cross Road<br />
+              Dollar Scheme Colony, 1st Stage BTM Layout<br />
+              Bengaluru, Karnataka 560068<br />
+              India
+            </p>
+          </div>
+          <div class="contact-item">
+            <h3>Web / repository</h3>
+            <p><a href="https://github.com/sami08181973/vision_pilot" target="_blank" rel="noopener">github.com/sami08181973/vision_pilot</a></p>
+          </div>
+        </div>
+        <div>
+          <div class="map-frame">
+            <iframe
+              title="Embedded AI Design Labs — Bengaluru office map"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              src="https://www.google.com/maps?q=Elite+Co-Works+BTM+Layout+Bengaluru+560068&output=embed">
+            </iframe>
+          </div>
+          <p class="map-caption">
+            Map: Elite Co-Works, BTM Layout, Bengaluru 560068 —
+            <a href="https://www.google.com/maps/search/?api=1&query=Elite+Co-Works+BTM+Layout+Bengaluru+560068" target="_blank" rel="noopener">Open in Google Maps</a>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div>
+        <strong>Embedded AI Design Labs Pvt Ltd</strong> · Vision Pilot L2 ADAS business proposal dashboard
+      </div>
+      <div>
+        © Copyrights 2026 Embedded AI Design Labs Pvt Ltd. All rights reserved.
+      </div>
+      <div>
+        Reference SoC latencies are industry order-of-magnitude figures for discussion, not timed claims on that silicon in this evaluation.
+        Contact details can be updated in this HTML if your registered address differs.
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

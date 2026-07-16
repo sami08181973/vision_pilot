@@ -21,6 +21,7 @@ target_link_libraries(models
         engine
         fusion
         logging
+        dsp_simd
         opencv_core
         opencv_imgproc
 )

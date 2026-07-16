@@ -43,6 +43,7 @@ if(ENABLE_ROS2_INTERFACE)
 endif()
 
 add_subdirectory(modules/engine)
+add_subdirectory(modules/dsp_simd)
 add_subdirectory(modules/models)
 
 add_subdirectory(modules/safety_guardian/fusion)   # tracking is embedded inside fusion
@@ -57,6 +58,9 @@ add_subdirectory(modules/debug)
 
 # Tests
 add_subdirectory(tests)
+
+# Micro-benchmarks (SIMD/DSP)
+add_subdirectory(benchmarks)
 
 # config
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/config

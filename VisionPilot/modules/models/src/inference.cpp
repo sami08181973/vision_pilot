@@ -1,6 +1,7 @@
 #include <models/inference.hpp>
 
 #include <common/utils.hpp>
+#include <dsp_simd/chw_convert.hpp>
 #include <logging/logger.hpp>
 
 #include <opencv2/imgproc.hpp>
@@ -19,37 +20,18 @@ constexpr int NET_W    = AutoDrive::NET_W;
 constexpr int NET_H    = AutoDrive::NET_H;
 constexpr int CHW_SIZE = AutoDrive::CHW_SIZE;
 
-constexpr float MEAN[3] = {0.485f, 0.456f, 0.406f};
-constexpr float STD[3]  = {0.229f, 0.224f, 0.225f};
-
 std::vector<float> chw_imagenet(const cv::Mat& bgr)
 {
-    cv::Mat rgb, f32;
-    cv::cvtColor(bgr, rgb, cv::COLOR_BGR2RGB);
-    rgb.convertTo(f32, CV_32FC3, 1.0 / 255.0);
-    std::vector<cv::Mat> ch(3);
-    cv::split(f32, ch);
-    std::vector<float> out(CHW_SIZE);
-    for (int c = 0; c < 3; ++c) {
-        float* dst = out.data() + c * NET_H * NET_W;
-        const float* src = reinterpret_cast<const float*>(ch[c].data);
-        for (int i = 0; i < NET_H * NET_W; ++i)
-            dst[i] = (src[i] - MEAN[c]) / STD[c];
-    }
+    // SIMD/DSP path writes CHW in-place (aligned store into vector buffer).
+    std::vector<float> out(static_cast<std::size_t>(CHW_SIZE));
+    visionpilot::dsp::bgr_to_chw_imagenet(bgr, out.data(), NET_W, NET_H);
     return out;
 }
 
 std::vector<float> chw_01(const cv::Mat& bgr)
 {
-    cv::Mat rgb, f32;
-    cv::cvtColor(bgr, rgb, cv::COLOR_BGR2RGB);
-    rgb.convertTo(f32, CV_32FC3, 1.0 / 255.0);
-    std::vector<cv::Mat> ch(3);
-    cv::split(f32, ch);
-    std::vector<float> out(CHW_SIZE);
-    for (int c = 0; c < 3; ++c)
-        std::memcpy(out.data() + c * NET_H * NET_W, ch[c].data,
-                    static_cast<std::size_t>(NET_H * NET_W) * sizeof(float));
+    std::vector<float> out(static_cast<std::size_t>(CHW_SIZE));
+    visionpilot::dsp::bgr_to_chw_01(bgr, out.data(), NET_W, NET_H);
     return out;
 }
 

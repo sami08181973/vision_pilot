@@ -247,3 +247,4 @@ terraform.rc
 platforms/virtual_hw/last_demo_output.txt
 platforms/virtual_hw/adas_demo_report.txt
 platforms/virtual_hw/demo_preview_*.jpg
+platforms/benchmarks/last_perf_bench.txt
