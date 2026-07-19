@@ -628,7 +628,7 @@
           <span>ACC · FCW · AEB · LKAS · LDW · ISA · Autopilot</span>
         </div>
         <div>
-          <strong>~15×</strong>
+          <strong>~19×</strong>
           <span>Faster CHW preprocess vs OpenCV legacy path</span>
         </div>
         <div>
@@ -761,7 +761,7 @@
     <section id="results">
       <div class="section-head">
         <h2>Evaluation results snapshot</h2>
-        <p>Virtual camera + virtual ECU demo on CPU Docker — measured July 2026.</p>
+        <p>Live run · 19 Jul 2026 · virtual camera + virtual ECU · Docker CPU (ONNX Runtime) · SSE2 host.</p>
       </div>
       <div class="metrics">
         <div class="panel">
@@ -775,18 +775,21 @@
             <div class="bar-row"><span>CIPO</span><div class="bar-track"><div class="bar-fill" style="--w:74%"></div></div><strong>66</strong></div>
           </div>
           <p style="margin-top:1rem;color:var(--muted);font-size:0.95rem">
-            89 planner cycles · 1,985 virtual ECU CMDs · ISA within limit (0 OVER) ·
-            FCW=0 while hard AEB band active.
+            50 synthetic frames · 89 planner cycles · 2,035 virtual ECU CMDs · ISA within limit (0 OVER) ·
+            FCW=0 while hard AEB band active · AutoDrive / AutoSteer / AutoSpeed ready.
           </p>
         </div>
         <div class="panel">
-          <h3 style="font-family:'Source Sans 3',sans-serif;font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Delivery KPIs</h3>
+          <h3 style="font-family:'Source Sans 3',sans-serif;font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Delivery KPIs (1024×512 · 80 iters)</h3>
           <div class="kpi-grid">
-            <div class="kpi"><div class="num">15×</div><div class="lbl">CHW convert vs OpenCV legacy</div></div>
-            <div class="kpi"><div class="num">1.25 ms</div><div class="lbl">Optimized CHW avg latency</div></div>
+            <div class="kpi"><div class="num">19×</div><div class="lbl">CHW convert vs OpenCV legacy</div></div>
+            <div class="kpi"><div class="num">1.44 ms</div><div class="lbl">Dispatch CHW avg latency</div></div>
             <div class="kpi"><div class="num">6 MB</div><div class="lbl">Aligned CHW arena (float32)</div></div>
             <div class="kpi"><div class="num">3</div><div class="lbl">E2E models: Drive / Steer / Speed</div></div>
           </div>
+          <p style="margin-top:1rem;color:var(--muted);font-size:0.95rem">
+            OpenCV legacy 27.4 ms → dispatch 1.44 ms (SSE2). Scalar path 0.74 ms available for further SoC tuning.
+          </p>
         </div>
       </div>
     </section>
@@ -799,12 +802,12 @@
       <div class="compare">
         <article>
           <div class="tag">Before</div>
-          <div class="big">18.9 ms</div>
-          <p>OpenCV color convert + split path for ImageNet CHW tensors.</p>
+          <div class="big">27.4 ms</div>
+          <p>OpenCV color convert + split path for ImageNet CHW tensors (measured).</p>
         </article>
         <article class="hl">
           <div class="tag">After · Embedded AI Labs optimization</div>
-          <div class="big">~15×</div>
+          <div class="big">~19×</div>
           <p>SIMD/DSP-aware CHW kernels with 64-byte aligned memory — ready to port further to NEON, HVX, C7x.</p>
         </article>
         <article>
